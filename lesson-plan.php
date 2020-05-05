@@ -79,11 +79,15 @@ class Lesson_Factory {
 
 class Lesson_Plans {
     public $due_dates;
+    public $asignments;
+    public $sections;
 
     public function __construct ($request){
-        //$this->request = $request;
         $this->set_due_dates();
-        //$this->set_lesson_plans($request);
+        $this->set_sections();
+        if($request['show_assignments']){
+            $this->set_assignments($request);
+        }
     }
 
     private function set_due_dates(){
@@ -99,7 +103,34 @@ class Lesson_Plans {
             $due_dates[] = $meta->due_date;
         }
         $this->due_dates = $due_dates;
-        $this->set_assignments($request);
+    }
+
+    private function set_sections(){
+        $sections_object = new Sections();
+        $this->sections = $sections_object->sections;
+    }
+
+    private function set_class_args(){
+        $args = array(
+            'post_type'=>'assignment',
+            'order'=>'DESC',
+            'fields'=>'ids'
+        );
+        $posts = new \WP_Query($args);
+        $this->posts = $posts->posts;
+        $class_args = array();
+        $class_taxs = array('schools', 'teachers', 'subjects', 'grades');
+        foreach($class_taxs as $tax){
+            foreach($posts as $post){
+                $class_args[$tax][] = get_terms( array(
+                    'taxonomy' => $tax,
+                    'hide_empty' => true,
+                    'fields'=>'names',
+                    'object_ids'=>$post_id
+                ) );
+            }
+        }
+        $this->class_args = $class_args;
     }
 
     /* 
@@ -137,14 +168,15 @@ class Lesson_Plans {
              }
             $posts = new \WP_Query($args); 
             $assignments[$due_date] = array(
-                //'query'=>$posts->query,
-                //'request'=>$posts->request,
+                'query'=>$posts->query,
+                'request'=>$posts->request,
                 'posts'=>$posts->posts
             ); 
         }
-         
         $this->assignments = $assignments;
     }
+
+    
 
 
 }//end lesson plan
@@ -192,10 +224,10 @@ class Classroom {
         if(!empty($classroom)){
             $class_array = explode('_', $classroom->class);
             $this->id = $this->classroom->id;
-            $this->school = $class_array[0];
-            $this->teacher = $class_array[1];
-            $this->grade = $class_array[2];
-            $this->subject = $class_array[3];
+            $this->schools = str_replace(' ', '-', $class_array[0]);
+            $this->teachers = str_replace(' ', '-', $class_array[1]);
+            $this->subjects = str_replace(' ', '-', $class_array[2]);
+            $this->grades = str_replace(' ', '-', $class_array[3]);
             $this->class_title = ucwords($classroom->class_title);
         } 
     }
@@ -210,10 +242,10 @@ class Classroom {
         if(!empty($classroom)){
             $class_array = explode('_', $classroom->class);
             $this->id = $this->classroom->id;
-            $this->schoool = $class_array[0];
-            $this->teacher = $class_array[1];
-            $this->grade = $class_array[2];
-            $this->subject = $class_array[3];
+            $this->schools = str_replace(' ', '-', $class_array[0]);
+            $this->teachers = str_replace(' ', '-', $class_array[1]);
+            $this->subjects = str_replace(' ', '-', $class_array[2]);
+            $this->grades = str_replace(' ', '-', $class_array[3]);
             $this->class_title = ucwords($classroom->class_title);
         } 
     }

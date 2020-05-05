@@ -10,34 +10,7 @@
 namespace Parent_Checklist_REST;
 
 
-//add_shortcode('the_classroom', __NAMESPACE__.'\\get_the_classroom');
 
-function get_the_classroom(){
-    $post_id = 41;
-    $class_taxs = array('schools', 'teachers', 'subjects', 'grades');
-    $class_args = [];
-    foreach($class_taxs as $tax){
-        $wp_terms = get_the_terms($post_id, $tax);
-        $class_args[$tax] = $wp_terms[0]->name;
-    }
-    $class = strtolower(implode('_', $class_args));
-    $class_title = ucwords(implode(' ', $class_args));
-
-    global $wpdb;
-    $class_id = $wpdb->get_row("select id, class from wp_classrooms where class='".$class."'");
-    if(empty($class_id)){
-        $insert_response = $wpdb->insert(
-            'wp_classrooms',
-            array(
-                'class' => $class,
-                'class_title'=>$class_title
-            )
-        );
-        return $wpdb->insert_id;
-    } else {
-        return $class_id->id;
-    }
-}
 
 
 
@@ -58,7 +31,7 @@ class Assignment_Post_Type_Factory {
         add_action('init', array($this, 'create_taxonomies'));
         add_filter('manage_edit-assignment_columns', array($this, 'add_menu_columns'));
         add_filter('manage_assignment_posts_custom_column', array($this, 'manage_custom_columns'));
-        add_action( 'rest_api_init', array($this, 'api_due_date_field'));
+        add_action( 'rest_api_init', array($this, 'api_custom_fields'));
 
     }
     
@@ -93,18 +66,24 @@ class Assignment_Post_Type_Factory {
 
     } //end create post type
 
-    function api_due_date_field() {
-        register_rest_field( 'assignments', 'due_date', array(
+    function api_custom_fields() {
+        register_rest_field( 'assignment', 'due_date', array(
         'get_callback' => __NAMESPACE__.'\\get_due_date',
         'schema' => null,
         )
         );
-
-        register_rest_field( 'assignments', 'class_args', array(
-            'get_callback' => __NAMESPACE__.'\\get_class_args',
+        /*
+        register_rest_field( 'assignment', 'class_taxonomies', array(
+            'get_callback' => __NAMESPACE__.'\\get_the_class_terms',
             'schema' => null,
             )
-            );
+        );
+*/
+        register_rest_field( 'assignment', 'class_terms', array(
+            'get_callback' => __NAMESPACE__.'\\get_the_class_array',
+            'schema' => null,
+            )
+        );
     }    
 
     public function create_taxonomies(){
@@ -218,6 +197,17 @@ class Assignment_Post_Type_Factory {
         $this->get_class($post_id);
     }    
     /**
+     * loops through the taxonomies and gets the terms for each taxonnomy
+     */
+    public function get_classroom(){
+        $class_taxs = array('schools', 'teachers', 'subjects', 'grades');
+        $class_args = [];
+        foreach($class_taxs as $tax){
+            $class_args[$tax] = get_the_terms($post_id, $tax);
+        }
+        return $class_args;
+    }
+    /**
      * gets or sets class
      * @return object class with params id, class string of school teacher subject grade
      * @return int id
@@ -226,10 +216,13 @@ class Assignment_Post_Type_Factory {
     public function get_class($post_id){
         $class_taxs = array('schools', 'teachers', 'subjects', 'grades');
         $class_args = [];
+        $tax_ids = [];
         foreach($class_taxs as $tax){
             $wp_terms = get_the_terms($post_id, $tax);
             if(!empty($wp_terms[0])){
-                $class_args[$tax] = $wp_terms[0]->name;}
+                $class_args[$tax] = $wp_terms[0]->slug;
+                $tax_ids[$tax]=$wp_terms[0]->term_id;
+            }
         }
         if(!empty($class_args)){
             $class = strtolower(implode('_', $class_args));
@@ -240,7 +233,8 @@ class Assignment_Post_Type_Factory {
                 'wp_classrooms',
                 array(
                     'class' => $class,
-                    'class_title'  =>ucwords(str_replace('_', ' ', $class))
+                    'class_title'  =>ucwords(str_replace('-', ' ', str_replace('_', ' ', $class))),
+                    'term_ids' => implode('_', $tax_ids)
                 )
             );
             return $wpdb->class;
@@ -266,7 +260,194 @@ function get_due_date( $object ) {
     $post_id = $object['id'];
     //return the post meta
     return get_post_meta( $post_id, 'due_date', true );
-   }
+}
+
+function get_the_class_array( $object ){
+    $post_id = $object['id'];
+    $class_taxs = array('schools', 'teachers', 'subjects', 'grades');
+    return $class_taxs;
+}
+/*
+function get_the_class_terms( $object ){
+    if(is_array($object)){
+        $post_id = $object['id'];
+    } else {
+        $post_id = $object;
+    }
+    $class_taxs = array('schools', 'teachers', 'subjects', 'grades');
+    $class_args = [];
+    $class_args['multidimensional_taxonomies'] = array();
+    $class_args['multidimensional'] = false;
+    //begins original loop
+    foreach($class_taxs as $tax){
+        $class_args[$tax] = get_terms( array(
+            'taxonomy' => $tax,
+            'hide_empty' => true,
+            'fields'=>'names',
+            'object_ids'=>$post_id
+        ) );
+        if(count($class_args[$tax]) > 1){
+            $class_args['multidimensional'] = true;
+            $class_args['multidimensional_taxonomies'][] = $tax;
+        }
+    } // ends the original loop
+
+    /* ===== this handles the multidimensional taxonomies======
+    ///we should really break this off into a separate function
+    ///need to revise the classroom class so that it does this code.
+    ========================================================== */
+    /*
+    $classroom_0 = array();
+        foreach($class_taxs as $tax){
+            $classroom_0[$tax] = $class_args[$tax][0];
+        }
+    $sections = array();
+    $sections[] = $classroom_0;
+    if($class_args['multidimensional'] == true){ // if none of the class taxs are multidimensional
+        //it is multidimensional.
+        //how many taxonomies are multidimensional?
+        $num_multis = count($class_args['multidimensional_taxonomies']);
+        for ($i = 0; $i <= $num_multis; $i++) {
+            $sections[$i] = $classroom_0;
+            foreach($class_args['multidimensional_taxonomies'] as $multitax){
+                $sections[$i][$multitax] = $class_args[$multitax][$i];
+            }
+        }
+    }
+    $class_args['sections'] = $sections;
+    return $class_args;
+}
+*/
+
+
+
+class Sections {
+    public $sections;
+    public $assignments;
+
+    public function __construct($show_assignments = false){
+        $this->set_assignments();
+        $this->get_post_sections();
+    }
+
+    private function set_assignments(){
+        $args = array(
+            'post_type'=>'assignment',
+            'order'=>'DESC',
+            
+        );
+        if(!$show_assignments){
+            $args['fields'] = 'ids';}
+            $assignments = new \WP_Query($args);
+            $this->assignments = $assignments->posts;
+    }
+
+    private function get_post_sections(){
+        $this->sections = array();
+        foreach($this->assignments as $assignment){
+            $assignment_sections = new Assignment_Sections($assignment);
+            foreach($assignment_sections->sections as $section){
+                $this->sections[] = $section;
+            }
+        } 
+    }
+
+} //end Sections
+
+add_shortcode('the_classroom', __NAMESPACE__.'\\get_the_classroom');
+
+function get_the_classroom(){
+   $sections = new Sections();
+   echo '<pre>'; var_dump($sections); echo '</pre>';
+}
+
+class Assignment_Sections {
+    public $sections;
+    public $section_taxonomies;
+    public $assignment_terms;
+    
+
+    public function __construct($post_id){
+        $this->section_taxonomies = array('schools', 'teachers', 'subjects', 'grades');
+        $this->get_assignment_terms($post_id);
+        $this->set_section_0();
+        $this->handle_multidimensional_sections();
+    }
+
+    private function get_assignment_terms($post_id){
+        $sections = array();
+        $sections['multidimensional'] = false;
+        $sections['multidimensional_taxonomies'] = array();
+        //loop
+        foreach($this->section_taxonomies as $tax){
+            $sections[$tax] = get_terms( array(
+                'taxonomy' => $tax,
+                'hide_empty' => true,
+                'fields'=>'names',
+                'object_ids'=>$post_id
+            ) );
+            if(count($sections[$tax]) > 1){
+                $sections['multidimensional'] = true;
+                $sections['multidimensional_taxonomies'][] = $tax;
+            }
+        } // ends the original loop
+        $this->assignment_terms = $sections;
+    }
+
+    private function set_section_0(){
+        $this->sections = array();//this is what we are after.
+        $section_0 = array();
+        foreach($this->section_taxonomies as $tax_name){
+            $section_0[$tax_name] = $this->assignment_terms[$tax_name][0];
+        }
+        $this->sections[]=$section_0;
+    }
+
+    private function handle_multidimensional_sections(){
+        if($this->assignment_terms['multidimensional'] == true){
+            $num_multis = count($this->assignment_terms['multidimensional_taxonomies']);
+            for ($i = 0; $i <= $num_multis; $i++) {
+                //for as many taxonomies as have multiple terms, create another section
+                //then set it equal to the section in position 0
+                $this->sections[$i] = $this->sections[0];
+
+                foreach($this->assignment_terms['multidimensional_taxonomies'] as $multitax){
+                    //loop through that new section changing only the needed taxonomies to the new position term
+                    $this->sections[$i][$multitax] = $this->assignment_terms[$multitax][$i];
+                }
+            } 
+        }
+    }
+
+} //end class assignment_sections
+
+
+/* ===== this handles the multidimensional taxonomies======
+    ///we should really break this off into a separate function
+    ///need to revise the classroom class so that it does this code.
+    ========================================================== */
+    /*
+    $classroom_0 = array();
+        foreach($class_taxs as $tax){
+            $classroom_0[$tax] = $class_args[$tax][0];
+        }
+    $sections = array();
+    $sections[] = $classroom_0;
+    if($class_args['multidimensional'] == true){ // if none of the class taxs are multidimensional
+        //it is multidimensional.
+        //how many taxonomies are multidimensional?
+        $num_multis = count($class_args['multidimensional_taxonomies']);
+        for ($i = 0; $i <= $num_multis; $i++) {
+            $sections[$i] = $classroom_0;
+            foreach($class_args['multidimensional_taxonomies'] as $multitax){
+                $sections[$i][$multitax] = $class_args[$multitax][$i];
+            }
+        }
+    }
+    $class_args['sections'] = $sections;
+    return $class_args;
+}
+*/
 
   
 
