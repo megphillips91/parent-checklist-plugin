@@ -79,7 +79,7 @@ class Lesson_Factory {
 
 class Lesson_Plans {
     public $due_dates;
-    public $asignments;
+    public $assignments;
     public $sections;
 
     public function __construct ($request){
