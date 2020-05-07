@@ -35,7 +35,7 @@ add_action( 'rest_api_init', function () {
   }
   
   function rest_get_lesson_plans(\WP_REST_Request $request){
-    $lesson_plans = new Lesson_Plans($request->get_params);
+    $lesson_plans = new Lesson_Plans($request);
     return $lesson_plans;
   }
 

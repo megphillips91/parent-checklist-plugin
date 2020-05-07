@@ -78,16 +78,18 @@ class Lesson_Factory {
 
 
 class Lesson_Plans {
+    public $request;
     public $due_dates;
     public $assignments;
     public $sections;
 
     public function __construct ($request){
+        $this->request = $request->get_body_params();
         $this->set_due_dates();
         $this->set_sections();
-        if($request['show_assignments']){
-            $this->set_assignments($request);
-        }
+        //if($request['show_assignments'] == true){
+            $this->set_assignments($request->get_body_params());
+        //}
     }
 
     private function set_due_dates(){
@@ -138,6 +140,7 @@ class Lesson_Plans {
     */
     public function set_assignments($request){
         $assignments = array();
+        unset($request['show_assignments']);
         $relation = (count($request) > 1)
             ? 'AND'
             : 'single';
