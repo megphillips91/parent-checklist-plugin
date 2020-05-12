@@ -53,21 +53,20 @@ add_action( 'rest_api_init', function () {
 
 
   function register_user(\WP_REST_Request $request){
-    $auth_response = authenticated($request->get_headers());
+    $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
       $username =$request->get_param('username');
       $email = $request->get_param('email');
-      $token = $request->get_param('token');
+      $token = $request->get_param('password');
       $wpusername = explode('@', $email);
       $wpusername = $wpusername[0];
       $user_id = wp_create_user($wpusername, $token, $email);
       $status = (is_int($user_id)) ? 'success' : 'failure';
       $response = array(
-        'username'=>$wpusername,
         'registration'=>$status,
-        'user_id' =>$user_id,
         'user'=>get_user_by('id', $user_id)
       );
+      return $response;
     } else {
       return $auth_response;
     }
@@ -87,8 +86,9 @@ add_action( 'rest_api_init', function () {
    * 4. Then check the secret_key_salt encryption. 
    * 
    */
-  function authenticated($headers) {
-    $nonce_key_header = $headers['x_scholistlt_auth'];
+  function authenticated($request) {
+    $headers = $request->get_headers();
+    $nonce_key_header = $headers['x_scholistit_auth'][0];
     if(empty($nonce_key_header)){
       $auth_response = array(
         'salt'=>wp_create_nonce("scholistit_registration"),
@@ -98,7 +98,7 @@ add_action( 'rest_api_init', function () {
       return $auth_response;
     } else {
       $response = array();
-      $nonce_key = $nonce_key_header[0];
+      $nonce_key = $nonce_key_header;
       //$nonce_key = base64_decode($nonce_key);
       $valid_key = SCHOLIST_IT_SECRET_KEY;
       $auth_array = explode('_', $nonce_key);
@@ -107,7 +107,7 @@ add_action( 'rest_api_init', function () {
       $response['key_check'] = ($supplied_key === $valid_key) ? true : 'fail';
       $response['nonce_check'] = (wp_verify_nonce($supplied_nonce, "scholistit_registration")) ? true : 'fail';
       if($response['key_check'] === true && $response['nonce_check'] === true ){
-        $response['authenticated'] = false;
+        $response['authenticated'] = true;
         return $response;
       } else {
         $response['authenticated'] = false;
@@ -116,6 +116,5 @@ add_action( 'rest_api_init', function () {
       }
     } 
   }
-
 
 ?>
