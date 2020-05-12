@@ -144,7 +144,7 @@ class Lesson_Plans {
         $relation = (count($request) > 1)
             ? 'AND'
             : 'single';
-        foreach($this->due_dates as $due_date){
+        //foreach($this->due_dates as $due_date){
             $tax_query = array();
             if((count($request) > 1)){$tax_query['relation'] = 'AND';}
             foreach($request as $tax=>$value){
@@ -157,25 +157,27 @@ class Lesson_Plans {
             
             $args = array(
                 'post_type'=>'assignment',
-                'order'=>'DESC',
-                'meta_query' => array(
+                'order'=>'DESC'
+            );
+                /*'meta_query' => array(
                     array(
                         'key' => 'due_date',
                         'value' => $due_date,
                         'compare' => '=',
                     )
-                )
-             );
+                    );
+                    */
+             
              if(!empty($request)){
                  $args['tax_query'] = $tax_query;
              }
             $posts = new \WP_Query($args); 
-            $assignments[$due_date] = array(
+            $assignments['assignments'] = array(
                 'query'=>$posts->query,
                 'request'=>$posts->request,
                 'posts'=>$posts->posts
             ); 
-        }
+        //}
         $this->assignments = $assignments;
     }
 

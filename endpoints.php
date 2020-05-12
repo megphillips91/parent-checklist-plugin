@@ -27,7 +27,8 @@ add_action( 'rest_api_init', function () {
       'validate_callback'=> __NAMESPACE__.'\\check_JWT',
     ) );
 
-  } ); //end add action
+  } 
+); //end add action
   
   function uploads_endpoint(\WP_REST_Request $request){
     $lesson = new Lesson_Factory($request);
@@ -52,13 +53,9 @@ add_action( 'rest_api_init', function () {
 
 
   function register_user(\WP_REST_Request $request){
-    /*if( !check_JWT($request->get_param('bearer')) ) {
-      $response = array(
-        'response'=> 'bad token'
-      );
-      return ($response);
-    } else {
-      /*$username =$request->get_param('username');
+    $auth_response = authenticated($request->get_headers());
+    if($auth_response['authenticated'] === true){
+      $username =$request->get_param('username');
       $email = $request->get_param('email');
       $token = $request->get_param('token');
       $wpusername = explode('@', $email);
@@ -69,33 +66,56 @@ add_action( 'rest_api_init', function () {
         'username'=>$wpusername,
         'registration'=>$status,
         'user_id' =>$user_id,
-        'user'=>get_user_by('id', $user_id),
-        'JWT_Auth' => check_JWT($request->bearer)
+        'user'=>get_user_by('id', $user_id)
       );
+    } else {
+      return $auth_response;
     }
-    */
-    $bearer = $request->get_param('Bearer');
-      $response = array(
-        'jwt'=>check_JWT($bearer)
+  }
+    
+  /**
+   * homeade security for now it will suffice. 
+   * two calls - 
+   * 1. get a nonce for scholistic_registration
+   * 2. return with 
+   * --- username
+   * --- email
+   * --- password (token from google/fb)
+   * --- nonce
+   * --- salt
+   * 3. this script will check the nonce against wp_check_nonce. if pass, 
+   * 4. Then check the secret_key_salt encryption. 
+   * 
+   */
+  function authenticated($headers) {
+    $nonce_key_header = $headers['x_scholistlt_auth'];
+    if(empty($nonce_key_header)){
+      $auth_response = array(
+        'salt'=>wp_create_nonce("scholistit_registration"),
+        'authenticated'=>false,
+        'message'=> 'The properly named auth header is missing. Please send a valid authentication header',
       );
-      return $response;
+      return $auth_response;
+    } else {
+      $response = array();
+      $nonce_key = $nonce_key_header[0];
+      //$nonce_key = base64_decode($nonce_key);
+      $valid_key = SCHOLIST_IT_SECRET_KEY;
+      $auth_array = explode('_', $nonce_key);
+      $supplied_key = $auth_array[1];
+      $supplied_nonce = $auth_array[0];
+      $response['key_check'] = ($supplied_key === $valid_key) ? true : 'fail';
+      $response['nonce_check'] = (wp_verify_nonce($supplied_nonce, "scholistit_registration")) ? true : 'fail';
+      if($response['key_check'] === true && $response['nonce_check'] === true ){
+        $response['authenticated'] = false;
+        return $response;
+      } else {
+        $response['authenticated'] = false;
+        $response['salt'] = wp_create_nonce("scholistit_registration");
+        return $response;
+      }
+    } 
   }
 
-  function check_JWT($bearer){
-    //THIS NEEDS TO BE PERFECTED somehow
-    $url = content_url('/wp-json/simple-jwt-authentication/v1/token/validate');
-    $args = array(
-      'headers'=>array(
-        'Authorization'=>$bearer
-      )
-      );
-    //$response = wp_remote_post($url, $args);
-    //$return = wp_remote_retrieve_body($response);
-    return TRUE;
-  }
-
-
-
-  //add lesson plans endpoint
 
 ?>
