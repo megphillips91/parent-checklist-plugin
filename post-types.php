@@ -72,13 +72,21 @@ class Assignment_Post_Type_Factory {
         'schema' => null,
         )
         );
-        /*
-        register_rest_field( 'assignment', 'class_taxonomies', array(
-            'get_callback' => __NAMESPACE__.'\\get_the_class_terms',
-            'schema' => null,
-            )
+        
+        register_rest_field( 'assignment', 'imageUrl', array(
+              'get_callback'    => __NAMESPACE__.'\\get_rest_featured_image',
+              'update_callback' => null,
+              'schema'          => null,
+          )
         );
-*/
+
+        register_rest_field( 'assignment', 'author_avatar', array(
+            'get_callback'    => __NAMESPACE__.'\\get_author_avatar',
+            'update_callback' => null,
+            'schema'          => null,
+        )
+      );
+
         register_rest_field( 'assignment', 'class_terms', array(
             'get_callback' => __NAMESPACE__.'\\get_the_class_array',
             'schema' => null,
@@ -252,6 +260,7 @@ class Assignment_Post_Type_Factory {
 } //end class declaration
 
 
+
 /**
  * the admin interface meta box to copy link to preview on youtube
  */
@@ -312,7 +321,23 @@ class Sections {
 
 } //end Sections
 
-//add_shortcode('the_classroom', __NAMESPACE__.'\\get_the_classroom');
+function get_rest_featured_image( $object, $field_name, $request ){
+    if( $object['featured_media'] ){
+      $img = wp_get_attachment_image_src( $object['featured_media'], 'app-thumb' );
+      return $img[0];
+    } else {
+      return false;
+    }
+}
+
+function get_author_avatar( $object, $field_name, $request ){
+   $author_id = $object['author'];
+   $response = array(
+       'author_id' => $author_id,
+       'photoUrl' => get_user_meta($author_id, 'scholistit_photo', true)
+   );
+   return $response; 
+}
 
 function get_the_classroom(){
    $sections = new Sections();

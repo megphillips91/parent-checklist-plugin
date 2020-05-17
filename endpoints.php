@@ -11,6 +11,11 @@ add_action( 'rest_api_init', function () {
       'callback' => __NAMESPACE__.'\\uploads_endpoint',
     ) );
 
+    register_rest_route( 'parent-checklist-rest/v2', '/assignments', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\post_assignments',
+    ) );
+
     register_rest_route( 'parent-checklist/v2', '/lesson-plans', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\rest_get_lesson_plans',
@@ -60,11 +65,65 @@ add_action( 'rest_api_init', function () {
       $token = $request->get_param('password');
       $wpusername = explode('@', $email);
       $wpusername = $wpusername[0];
-      $user_id = wp_create_user($wpusername, $token, $email);
-      $status = (is_int($user_id)) ? 'success' : 'failure';
+      $user = array(
+        'user_pass' => $token,
+        'user_login' =>$wpusername,
+        'user_email' =>$email,
+        'display_name' => $username,
+        'role'=>'author'
+      );
+      $user_id = wp_insert_user($user);
+      $success= (is_int($user_id)) ? true : false ;
+      //save photourl to usermeta
+      if($status){
+        update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
+      }
       $response = array(
-        'registration'=>$status,
-        'user'=>get_user_by('id', $user_id)
+        'user'=>$user,
+        'registration'=>$success,
+        'wp_user'=>get_user_by('id', $user_id)
+      );
+      return $response;
+    } else {
+      return $auth_response;
+    }
+  }
+
+  function post_assignments(\WP_REST_Request $request){
+    $auth_response = authenticated($request);
+    if($auth_response['authenticated'] === true){
+      //log in the current user by email and password
+      $params = $request->get_params();
+      $wp_user =   get_user_by('email', sanitize_email($params['post_author']));
+      $post_array = array(
+        'post_author' => $wp_user->get('id'),
+        'post_title' => sanitize_text_field($params['post_title']),
+        'post_excerpt' => sanitize_text_field($params['post_excerpt']),
+        'post_content' => '',
+        'post_date_gmt' => sanitize_text_field($params['post_date']),
+        'post_status' => 'publish',
+        'post_type' => 'assignment',
+        'meta_input' => array(
+            'due_date' => sanitize_text_field($params['due_date']),
+            'mandatory' => sanitize_text_field($params['mandatory'])
+        )
+      );
+      $post_id = wp_insert_post($post_array);
+      //handle the terms
+      $tax_fields = array('grades', 'teachers', 'schools', 'subjects', 'keywords');
+      $tax_input = array();
+      foreach($tax_fields as $tax) {
+        $term_names = explode(',', $params[$tax]);
+        foreach($term_names as $name){
+          $slug = str_replace(' ', '-', strtolower($name));
+          $name = $slug;
+          $tax_fields[] = wp_set_object_terms( $post_id, $term_names, $tax );
+        }
+      }
+      $response = array(
+        'params'=>$post_array,
+        'post_id' => $post_id,
+        'tax_fields'=>$tax_fields
       );
       return $response;
     } else {

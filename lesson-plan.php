@@ -172,13 +172,27 @@ class Lesson_Plans {
                  $args['tax_query'] = $tax_query;
              }
             $posts = new \WP_Query($args); 
+            $images = $this->get_images($posts);
             $assignments['assignments'] = array(
                 'query'=>$posts->query,
                 'request'=>$posts->request,
-                'posts'=>$posts->posts
+                'posts'=>$posts->posts,
+                'images'=>$images
             ); 
         //}
         $this->assignments = $assignments;
+    }
+
+    public function get_images($posts){
+        $images = array();
+        foreach($posts as $post){
+            $post_id = $post->ID;
+            $imageUrl = get_the_post_thumbnail_url($post_id);
+            if($imageUrl){
+                $images[] = array('id'=>$post_id, 'imageUrl'=>$imageUrl);
+            }
+        }
+        return $images;
     }
 
     
