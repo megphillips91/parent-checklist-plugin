@@ -171,10 +171,18 @@ class Lesson_Plans {
                  $args['tax_query'] = $tax_query;
              }
             $posts = new \WP_Query($args); 
-            //gt author photo
+            //get author photo | query completed assignments
             foreach($posts->posts as $post){
                 $post->author_avatar = get_user_meta($post->post_author, 'scholistit_photo', true);
+                global $wpdb;
+                $completed = $wpdb->get_results("SELECT user_id FROM wp_completed_assignments WHERE post_id=".$post->ID);
+                $users_complete = array();
+                foreach($completed as $complete){
+                    $users_complete[] = $complete->user_id;
+                }
+                $post->complete = $users_complete;
             }
+
             $images = $this->get_images($posts);
             $assignments['assignments'] = array(
                 'posts'=>$posts->posts,
