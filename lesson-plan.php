@@ -159,23 +159,24 @@ class Lesson_Plans {
                 'post_type'=>'assignment',
                 'order'=>'DESC'
             );
-                /*'meta_query' => array(
-                    array(
-                        'key' => 'due_date',
-                        'value' => $due_date,
-                        'compare' => '=',
-                    )
-                    );
-                    */
-             
+            /*'meta_query' => array(
+                array(
+                    'key' => 'due_date',
+                    'value' => $due_date,
+                    'compare' => '=',
+                )
+                );
+                */
              if(!empty($request)){
                  $args['tax_query'] = $tax_query;
              }
             $posts = new \WP_Query($args); 
+            //gt author photo
+            foreach($posts->posts as $post){
+                $post->author_avatar = get_user_meta($post->post_author, 'scholistit_photo', true);
+            }
             $images = $this->get_images($posts);
             $assignments['assignments'] = array(
-                'query'=>$posts->query,
-                'request'=>$posts->request,
                 'posts'=>$posts->posts,
                 'images'=>$images
             ); 

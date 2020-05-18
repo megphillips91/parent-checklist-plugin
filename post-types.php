@@ -32,7 +32,6 @@ class Assignment_Post_Type_Factory {
         add_filter('manage_edit-assignment_columns', array($this, 'add_menu_columns'));
         add_filter('manage_assignment_posts_custom_column', array($this, 'manage_custom_columns'));
         add_action( 'rest_api_init', array($this, 'api_custom_fields'));
-
     }
     
 
@@ -92,6 +91,12 @@ class Assignment_Post_Type_Factory {
             'schema' => null,
             )
         );
+
+        register_rest_field( 'assignment', 'assigned_date', array(
+            'get_callback' => __NAMESPACE__.'\\get_assigned_date',
+            'schema' => null,
+            )
+            );
     }    
 
     public function create_taxonomies(){
@@ -127,7 +132,7 @@ class Assignment_Post_Type_Factory {
         }
         
     }// end create taxonomies
-
+    
     public function add_menu_columns($columns){
         $new_columns['cb'] = '<input type="checkbox" />';
         $new_columns['title'] = _x('Assignment', 'column name');
@@ -136,6 +141,7 @@ class Assignment_Post_Type_Factory {
         $new_columns['grade'] = __('Grade');
         $new_columns['teachers'] = __('Teachers');
         $new_columns['subject'] = __('Subjects');
+        $new_columns['assigned_date'] = __('Assigned Date');
         $new_columns['due_date'] = __('Due Date');
         $new_columns['date'] = _x('Date', 'column name');
         return $new_columns;
@@ -162,6 +168,10 @@ class Assignment_Post_Type_Factory {
             break;
             case 'due_date':
                 $terms = get_post_meta($post->ID, 'due_date', true);
+                echo $terms;
+            break;
+            case 'assigned_date':
+                $terms = get_post_meta($post->ID, 'assigned_date', true);
                 echo $terms;
             break;
         }
@@ -201,11 +211,22 @@ class Assignment_Post_Type_Factory {
         'side'
         );
 
+        add_meta_box( 'assigned_date',
+         __( 'Assigned Date', 'textdomain' ), 
+         __NAMESPACE__.'\\assigned_date_callback', 
+         'assignment',
+        'side'
+        );
+
     }
     public function save_custom_meta($post_id){
         if(isset($_POST['due_date']) && !empty($_POST['due_date'])){
             //TODO: check nonce
             update_post_meta($post_id, 'due_date', sanitize_text_field($_POST['due_date']));
+        }
+        if(isset($_POST['assigned_date']) && !empty($_POST['assigned_date'])){
+            //TODO: check nonce
+            update_post_meta($post_id, 'assigned_date', sanitize_text_field($_POST['assigned_date']));
         }
         $this->get_class($post_id);
     }    
@@ -269,11 +290,23 @@ function due_date_callback(){
     echo $metabox;
 }
 
+function assigned_date_callback(){
+    $metabox = '<input type="date" id="assigned_date" name="assigned_date" value="'.get_post_meta(get_the_id(), 'assigned_date', true).'"/>';
+    echo $metabox;
+}
+
 function get_due_date( $object ) {
     //get the id of the post object array
     $post_id = $object['id'];
     //return the post meta
     return get_post_meta( $post_id, 'due_date', true );
+}
+
+function get_assigned_date( $object ) {
+    //get the id of the post object array
+    $post_id = $object['id'];
+    //return the post meta
+    return get_post_meta( $post_id, 'assigned_date', true );
 }
 
 function get_the_class_array( $object ){
@@ -331,7 +364,7 @@ function get_rest_featured_image( $object, $field_name, $request ){
 }
 
 function get_author_avatar( $object, $field_name, $request ){
-   $author_id = $object['author'];
+   $author_id = $object['post_author'];
    $response = array(
        'author_id' => $author_id,
        'photoUrl' => get_user_meta($author_id, 'scholistit_photo', true)

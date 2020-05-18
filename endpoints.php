@@ -3,6 +3,7 @@
  * Create wp rest api namespace and endpoint to post new csv files
  */
 namespace Parent_Checklist_REST;
+use \DateTime;
 
 add_action( 'rest_api_init', function () {
 
@@ -29,7 +30,11 @@ add_action( 'rest_api_init', function () {
     register_rest_route( 'parent-checklist-rest/v2', '/registration', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\register_user',
-      'validate_callback'=> __NAMESPACE__.'\\check_JWT',
+    ) );
+
+    register_rest_route( 'parent-checklist-rest/v2', '/mark_complete', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\mark_complete',
     ) );
 
   } 
@@ -56,6 +61,8 @@ add_action( 'rest_api_init', function () {
     return $classes;
   }
 
+  
+
 
   function register_user(\WP_REST_Request $request){
     $auth_response = authenticated($request);
@@ -73,15 +80,18 @@ add_action( 'rest_api_init', function () {
         'role'=>'author'
       );
       $user_id = wp_insert_user($user);
+      if(!is_int($user_id) && $user_id->errors){
+        $user = get_user_by('email', $email);
+        $user_id = $user->ID;
+      }
       $success= (is_int($user_id)) ? true : false ;
       //save photourl to usermeta
-      if($status){
-        update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
-      }
+      update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
       $response = array(
         'user'=>$user,
         'registration'=>$success,
-        'wp_user'=>get_user_by('id', $user_id)
+        'wp_user'=>get_user_by('id', $user_id),
+        'wp_user_id'=>$user_id
       );
       return $response;
     } else {
@@ -120,8 +130,10 @@ add_action( 'rest_api_init', function () {
           $tax_fields[] = wp_set_object_terms( $post_id, $term_names, $tax );
         }
       }
+      //set up author avatar
       $response = array(
-        'params'=>$post_array,
+        'params'=>$params,
+        'post_array'=>$post_array,
         'post_id' => $post_id,
         'tax_fields'=>$tax_fields
       );
@@ -130,7 +142,59 @@ add_action( 'rest_api_init', function () {
       return $auth_response;
     }
   }
-    
+  
+  function mark_complete(\WP_REST_Request $request){
+    $auth_response = authenticated($request);
+    if($auth_response['authenticated'] === true){
+      global $wpdb;
+      $params = $request->get_params();
+      if(intval($params['post_id']) && intval($params['user_id'])){
+          $datetime = new DateTime($params['check_date']);
+          $mysqlDate = $datetime->format("Y-m-d H:i:s");
+          //insert
+          if($params['action'] == 'insert'){
+            $insert = $wpdb->insert(
+              'wp_completed_assignments',
+              array(
+                'post_id'=>$params['post_id'],
+                'user_id'=>$params['user_id'],
+                'check_date'=>$mysqlDate
+              )
+            );
+            if($insert){
+              $response = array(
+                'insert_id' => $wpdb->insert_id,
+                'status'=>'whoohoo'
+              );
+              return $response;
+            }
+          }
+          //delete 
+        if($params['action'] === 'delete'){
+          $delete = $wpdb->delete(
+            'wp_completed_assignments',
+            array(
+              'post_id'=>$params['post_id'],
+              'user_id'=>$params['user_id'],
+            )
+            );
+            if($delete){
+              $response = array(
+                'delete'=>$delete,
+                'status'=>'success'
+              );
+              return $response;
+            }
+        }
+        return "not a valid action";
+      } else {
+        return 'validation_error';
+      }
+    } else {
+      return $auth_response;
+    }
+  }
+
   /**
    * homeade security for now it will suffice. 
    * two calls - 
