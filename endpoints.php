@@ -37,6 +37,12 @@ add_action( 'rest_api_init', function () {
       'callback' => __NAMESPACE__.'\\mark_complete',
     ) );
 
+    //get_scholistit_user_data
+    register_rest_route( 'parent-checklist-rest/v2', '/user_data', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\get_scholistit_user_data',
+    ) );
+
   } 
 ); //end add action
   
@@ -87,11 +93,14 @@ add_action( 'rest_api_init', function () {
       $success= (is_int($user_id)) ? true : false ;
       //save photourl to usermeta
       update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
+      //get completed assignments
+      $completed = get_user_completed_assignments($user_id);
       $response = array(
         'user'=>$user,
         'registration'=>$success,
         'wp_user'=>get_user_by('id', $user_id),
-        'wp_user_id'=>$user_id
+        'wp_user_id'=>$user_id,
+        'completed'=>$completed
       );
       return $response;
     } else {
@@ -99,26 +108,54 @@ add_action( 'rest_api_init', function () {
     }
   }
 
+
+  function get_scholistit_user_data(\WP_REST_Request $request){
+    $params = $request->get_params();
+    $completed_assignments = get_user_completed_assignments($params['user_id']);
+    $userData = array(
+      'completed'=>$completed_assignments
+    );
+    return $userData;
+  }
+
+  function get_user_completed_assignments($user_id){
+    global $wpdb;
+    $completed = $wpdb->get_results("SELECT post_id FROM wp_completed_assignments WHERE user_id=".$user_id);
+    $posts_complete = array();
+    foreach($completed as $complete){
+        $posts_complete[] = $complete->post_id;
+    }
+    $response = array(
+      //'params' => $user_id,
+      //'completed' => $completed,
+      'posts_complete' => $posts_complete
+    );
+    return $response;
+  }
+
   function post_assignments(\WP_REST_Request $request){
     $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
       //log in the current user by email and password
       $params = $request->get_params();
+      $today = date('Y-m-d');
       $wp_user =   get_user_by('email', sanitize_email($params['post_author']));
       $post_array = array(
         'post_author' => $wp_user->get('id'),
         'post_title' => sanitize_text_field($params['post_title']),
         'post_excerpt' => sanitize_text_field($params['post_excerpt']),
         'post_content' => '',
-        'post_date_gmt' => sanitize_text_field($params['post_date']),
+        'post_date_gmt' => $today,
         'post_status' => 'publish',
         'post_type' => 'assignment',
         'meta_input' => array(
             'due_date' => sanitize_text_field($params['due_date']),
-            'mandatory' => sanitize_text_field($params['mandatory'])
+            'mandatory' => sanitize_text_field($params['mandatory']),
+            'assigned_date' => sanitize_text_field($params['post_date'])
         )
       );
       $post_id = wp_insert_post($post_array);
+      update_post_meta($post_id, 'assigned_date', sanitize_text_field($params['post_date']));
       //handle the terms
       $tax_fields = array('grades', 'teachers', 'schools', 'subjects', 'keywords');
       $tax_input = array();
@@ -135,7 +172,8 @@ add_action( 'rest_api_init', function () {
         'params'=>$params,
         'post_array'=>$post_array,
         'post_id' => $post_id,
-        'tax_fields'=>$tax_fields
+        'tax_fields'=>$tax_fields,
+        'post'=>get_post($post_id)
       );
       return $response;
     } else {
@@ -170,7 +208,7 @@ add_action( 'rest_api_init', function () {
             }
           }
           //delete 
-        if($params['action'] === 'delete'){
+        if($params['action'] == 'delete'){
           $delete = $wpdb->delete(
             'wp_completed_assignments',
             array(
@@ -184,9 +222,19 @@ add_action( 'rest_api_init', function () {
                 'status'=>'success'
               );
               return $response;
+            } else {
+              $response = array(
+                'delete'=>$delete,
+                'status'=>'the assignment was not in the db to delete'
+              );
+              return $response;
             }
         }
-        return "not a valid action";
+        $response = array(
+          'message'=>"not a valid action",
+          'params'=>$params
+        );
+        return $response;
       } else {
         return 'validation_error';
       }

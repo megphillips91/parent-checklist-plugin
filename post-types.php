@@ -97,6 +97,12 @@ class Assignment_Post_Type_Factory {
             'schema' => null,
             )
             );
+        
+        register_rest_field( 'assignment', 'completed', array(
+                'get_callback' => __NAMESPACE__.'\\get_completed_assignments',
+                'schema' => null,
+                )
+                );    
     }    
 
     public function create_taxonomies(){
@@ -302,6 +308,17 @@ function get_due_date( $object ) {
     return get_post_meta( $post_id, 'due_date', true );
 }
 
+function get_completed_assignments( $object ) {
+    $post_id = $object['id'];
+    global $wpdb;
+    $completed = $wpdb->get_results("SELECT user_id FROM wp_completed_assignments WHERE post_id=".$post_id);
+    $users_complete = array();
+    foreach($completed as $complete){
+        $users_complete[] = $complete->user_id;
+    }
+    return $users_complete;
+}
+
 function get_assigned_date( $object ) {
     //get the id of the post object array
     $post_id = $object['id'];
@@ -328,6 +345,7 @@ class Sections {
 
     private function set_assignments(){
         $args = array(
+            'posts_per_page'=>'-1',
             'post_type'=>'assignment',
             'order'=>'DESC',
             

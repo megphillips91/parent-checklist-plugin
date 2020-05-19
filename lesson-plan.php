@@ -156,6 +156,7 @@ class Lesson_Plans {
             }
             
             $args = array(
+                'posts_per_page'=>'-1',
                 'post_type'=>'assignment',
                 'order'=>'DESC'
             );
@@ -174,6 +175,7 @@ class Lesson_Plans {
             //get author photo | query completed assignments
             foreach($posts->posts as $post){
                 $post->author_avatar = get_user_meta($post->post_author, 'scholistit_photo', true);
+                //get users complete
                 global $wpdb;
                 $completed = $wpdb->get_results("SELECT user_id FROM wp_completed_assignments WHERE post_id=".$post->ID);
                 $users_complete = array();
@@ -181,6 +183,12 @@ class Lesson_Plans {
                     $users_complete[] = $complete->user_id;
                 }
                 $post->complete = $users_complete;
+                //get mandatory
+                $post->mandatory = get_post_meta($post->ID, 'mandatory', true);
+                //get due date
+                $post->due_date = get_post_meta($post->ID, 'due_date', true);
+                //get due date
+                $post->assigned_date = get_post_meta($post->ID, 'assigned_date', true);
             }
 
             $images = $this->get_images($posts);
