@@ -6,6 +6,7 @@
  * -- each classroom needs id, school, grade, teacher, subject
  */
 namespace Parent_Checklist_REST;
+use \DateTime;
 
 /**
  * 
@@ -84,12 +85,9 @@ class Lesson_Plans {
     public $sections;
 
     public function __construct ($request){
-        $this->request = $request->get_body_params();
         $this->set_due_dates();
         $this->set_sections();
-        //if($request['show_assignments'] == true){
-            $this->set_assignments($request->get_body_params());
-        //}
+        $this->set_assignments($request->get_body_params());
     }
 
     private function set_due_dates(){
@@ -141,10 +139,14 @@ class Lesson_Plans {
     public function set_assignments($request){
         $assignments = array();
         unset($request['show_assignments']);
+        $posts_per_page = $request['number'];
+        unset($request['number']);
+        if(empty($posts_per_page)){
+            $posts_per_page = '-1';
+        }
         $relation = (count($request) > 1)
             ? 'AND'
             : 'single';
-        //foreach($this->due_dates as $due_date){
             $tax_query = array();
             if((count($request) > 1)){$tax_query['relation'] = 'AND';}
             foreach($request as $tax=>$value){
@@ -160,43 +162,54 @@ class Lesson_Plans {
                 'post_type'=>'assignment',
                 'order'=>'DESC'
             );
-            /*'meta_query' => array(
-                array(
-                    'key' => 'due_date',
-                    'value' => $due_date,
-                    'compare' => '=',
-                )
-                );
-                */
              if(!empty($request)){
                  $args['tax_query'] = $tax_query;
              }
             $posts = new \WP_Query($args); 
-            //get author photo | query completed assignments
-            foreach($posts->posts as $post){
-                $post->author_avatar = get_user_meta($post->post_author, 'scholistit_photo', true);
-                //get users complete
-                global $wpdb;
-                $completed = $wpdb->get_results("SELECT user_id FROM wp_completed_assignments WHERE post_id=".$post->ID);
-                $users_complete = array();
-                foreach($completed as $complete){
-                    $users_complete[] = $complete->user_id;
+
+            // now we are going to reorder this array of posts by the assigned date
+            $returned_posts = $posts->posts;
+            foreach($returned_posts as $post){
+                $post->assigned_date = new DateTime (get_post_meta($post->ID, 'assigned_date', true));
+            }
+             
+             usort($returned_posts, function($a, $b) {
+                
+                if ($a->assigned_date == $b->assigned_date) {
+                  return 0;
                 }
-                $post->complete = $users_complete;
-                //get mandatory
-                $post->mandatory = get_post_meta($post->ID, 'mandatory', true);
-                //get due date
-                $post->due_date = get_post_meta($post->ID, 'due_date', true);
-                //get due date
-                $post->assigned_date = get_post_meta($post->ID, 'assigned_date', true);
+              
+                return $a->assigned_date < $b->assigned_date ? 1 : -1;
+              });
+
+             
+            //get author photo | query completed assignments
+            foreach($returned_posts as $key=>$post){
+                if($key > $posts_per_page){
+                    unset($posts->posts[$key]);
+                } else {
+                    $post->author_avatar = get_user_meta($post->post_author, 'scholistit_photo', true);
+                    //get users complete
+                    global $wpdb;
+                    $completed = $wpdb->get_results("SELECT user_id FROM wp_completed_assignments WHERE post_id=".$post->ID);
+                    $users_complete = array();
+                    foreach($completed as $complete){
+                        $users_complete[] = $complete->user_id;
+                    }
+                    $post->complete = $users_complete;
+                    //set meta
+                    $post->mandatory = get_post_meta($post->ID, 'mandatory', true);
+                    $post->due_date = get_post_meta($post->ID, 'due_date', true);
+                    $post->assigned_date = get_post_meta($post->ID, 'assigned_date', true);
+                }  
             }
 
             $images = $this->get_images($posts);
             $assignments['assignments'] = array(
-                'posts'=>$posts->posts,
+                'post_count'=>$posts->post_count,
+                'posts'=>$returned_posts,
                 'images'=>$images
             ); 
-        //}
         $this->assignments = $assignments;
     }
 
