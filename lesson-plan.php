@@ -185,8 +185,8 @@ class Lesson_Plans {
              
             //get author photo | query completed assignments
             foreach($returned_posts as $key=>$post){
-                if($key > $posts_per_page){
-                    unset($posts->posts[$key]);
+                if($posts_per_page !== '-1' && $key > (int)$posts_per_page - 1 ){
+                    unset($returned_posts[$key]);
                 } else {
                     $post->author_avatar = get_user_meta($post->post_author, 'scholistit_photo', true);
                     //get users complete
@@ -206,7 +206,8 @@ class Lesson_Plans {
 
             $images = $this->get_images($posts);
             $assignments['assignments'] = array(
-                'post_count'=>$posts->post_count,
+                'total_posts'=>$posts->post_count,
+                'returned_posts'=>count($returned_posts),
                 'posts'=>$returned_posts,
                 'images'=>$images
             ); 
