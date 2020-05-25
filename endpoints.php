@@ -5,6 +5,12 @@
 namespace Parent_Checklist_REST;
 use \DateTime;
 
+$nonce = 'invalid';
+add_action('wp_loaded', function () {
+  global $nonce;
+  $nonce = wp_create_nonce('wp_rest');
+});
+
 add_action( 'rest_api_init', function () {
 
     register_rest_route( 'parent-checklist-rest/v2', '/uploads', array(
@@ -27,6 +33,11 @@ add_action( 'rest_api_init', function () {
       'callback' => __NAMESPACE__.'\\rest_get_classrooms',
     ) );
 
+    register_rest_route( 'parent-checklist/v2', '/follows', array(
+      'methods' => 'GET',
+      'callback' => __NAMESPACE__.'\\rest_get_follows',
+    ) );
+
     register_rest_route( 'parent-checklist-rest/v2', '/registration', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\register_user',
@@ -43,8 +54,86 @@ add_action( 'rest_api_init', function () {
       'callback' => __NAMESPACE__.'\\get_scholistit_user_data',
     ) );
 
+    //get_scholistit_user_data
+    register_rest_route( 'parent-checklist-rest/v2', '/comments/post', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\save_comment',
+    ) );
+
+    //get_scholistit_user_data
+    register_rest_route( 'parent-checklist-rest/v2', '/follow', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\post_follow',
+    ) );
+
   } 
 ); //end add action
+
+  function post_follow(\WP_REST_Request $request){
+    $auth_response = authenticated($request);
+    if($auth_response['authenticated'] === true){
+    $params = $request->get_params();
+    $following = get_follows($user_id);
+    $terms = explode('_', $params['object']);
+    $profile = ($params['student'] == 'no') ? 'self' : $params['student'] ;
+    $user_id = (int) $params['user_id'];
+    
+    global $wpdb;
+    $insert = $wpdb->insert(
+      'wp_following',
+      array(
+        'user_id'=>$user_id,
+        'profile'=>$profile,
+        'the_object'=>serialize($terms),
+        'type'=>$params['type']
+      )
+      );
+      
+    $response = array(
+      'insert'=>$insert,
+      'following'=>get_follows($user_id),
+      'terms'=>$terms,
+      'serialize' => serialize($terms)
+    );
+    return $response;
+  } else {
+    return $auth_response;
+  }
+  }
+
+  function get_follows($user_id, $profile = NULL){
+    global $wpdb;
+    if($profile != NULL){
+      $query = "select * from wp_following where user_id=".$user_id;
+      $query .= " and profile = '".$profile."'";
+    } else {
+      $query = "SELECT DISTINCT the_object, object_type FROM wp_following WHERE user_id=".$user_id;
+    }
+    $result = $wpdb->get_results($query);
+    foreach($result as $key=>$follow){
+      $follow->the_object = unserialize($follow->the_object);
+      $section = array(
+        'schools' => str_replace('-', ' ', $follow->the_object[0]),
+        'teachers' => str_replace('-', ' ', $follow->the_object[1]),
+        'grades' => str_replace('-', ' ', $follow->the_object[2]),
+        'subjects' => str_replace('-', ' ', $follow->the_object[3]),
+      );
+      $follow->section = $section;
+      unset($follow->the_object);
+    }
+    return $result;
+  }
+
+  function rest_get_follows(\WP_REST_Request $request){
+      $params = $request->get_params();
+      if(!empty($params['userID'])){
+        $user_id = (int) $params['userID'];
+          $following = get_follows($user_id);
+          return $following;
+      } else {
+        return 'there was an error. userID is required parameter';
+      }
+  }
   
   function uploads_endpoint(\WP_REST_Request $request){
     $lesson = new Lesson_Factory($request);
@@ -68,7 +157,26 @@ add_action( 'rest_api_init', function () {
   }
 
   
-
+  function save_comment(\WP_REST_Request $request){
+    $auth_response = authenticated($request);
+    if($auth_response['authenticated'] === true){
+      $params = $request->get_params();
+      $args = array(
+        'comment_content'=>$params['comment'],
+        'comment_post_ID'=>(int)$params['post'],
+        'user_id'=>$params['author'],
+        'comment_meta'=>array('comment_section' => serialize($params['section']))
+      );
+      $comment_ID = wp_insert_comment($args);
+      $response = array(
+        'comment_id' => $comment_ID,
+        'comment' => get_comment($comment_ID)
+      );
+      return $response;
+    } else {
+      return $auth_response;
+    }
+  }
 
   function register_user(\WP_REST_Request $request){
     $auth_response = authenticated($request);
@@ -89,8 +197,21 @@ add_action( 'rest_api_init', function () {
       if(!is_int($user_id) && $user_id->errors){
         $user = get_user_by('email', $email);
         $user_id = $user->ID;
+        $newPass = wp_set_password($token, $user_id);
+        $creds = array(
+          'user_login'=>$user->get('user_login'),
+          'user_password'=>$newPass
+        );
+        wp_signon($creds, true);
       }
       $success= (is_int($user_id)) ? true : false ;
+      //sign on user
+      $user = get_user_by('ID', $user_id);
+      $creds = array(
+        'user_login'=>$user->get('user_login'),
+        'user_password'=>$user->data->user_pass
+      );
+      wp_signon($creds, true);
       //save photourl to usermeta
       update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
       //get completed assignments
@@ -136,8 +257,13 @@ add_action( 'rest_api_init', function () {
   function post_assignments(\WP_REST_Request $request){
     $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
-      //log in the current user by email and password
       $params = $request->get_params();
+      if(!empty($params['post_id'])){
+        //then edit or delete
+        $response = edit_assignment($params);
+        return $response;
+      } else {
+          //log in the current user by email and password
       $today = date('Y-m-d');
       $wp_user =   get_user_by('email', sanitize_email($params['post_author']));
       $post_array = array(
@@ -176,9 +302,49 @@ add_action( 'rest_api_init', function () {
         'post'=>get_post($post_id)
       );
       return $response;
+      } //else create post
+      
     } else {
       return $auth_response;
     }
+  }
+
+  function edit_assignment($params){
+    $changed_fields = (!empty($params['changed_fields'])) ? explode(',', $params['changed_fields']): null ;    
+    if(in_array('delete_post', $changed_fields)){
+      //MEGDO we need to deal with SEO here. Eventually when we have an SEO strategy to show lessons publically
+      $delete = wp_trash_post($params['post_id']);
+      $status = ($delete) ? true : false;
+      $response = array(
+        'return' => $delete,
+        'deleted'=> $status
+      );
+      return $response;
+    } else {
+      $post_args = array(
+        'ID'           => $params['post_id'],
+        'post_title'   => $params['post_title'],
+        'post_excerpt' => $params['post_excerpt'],
+      );
+      $result = wp_update_post($post_args);
+      update_post_meta($params['post_id'], 'due_date', $params['due_date']);
+      update_post_meta($params['post_id'], 'assigned_date', $params['assigned_date']);
+      update_post_meta($params['post_id'], 'mandatory', $params['mandatory']);
+      //wp-json/wp/v2/assignments?.$params['post_id]
+      $request = new \WP_REST_Request( 'GET', '/wp/v2/assignments/'.$params['post_id']);
+      $response = rest_do_request( $request );
+      $server = rest_get_server();
+      $data = $server->response_to_data( $response, false );
+      $post = $data ;
+      $response = array(
+        'post'=>$post,
+        'edit'=>true,
+        'params'=>$params
+  
+      );
+      return $response;
+    } return "there was an error. please try again";
+    
   }
   
   function mark_complete(\WP_REST_Request $request){

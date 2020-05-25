@@ -59,7 +59,7 @@ class Assignment_Post_Type_Factory {
             'rest_base'          => 'assignments',
             'rest_controller_class' => 'WP_REST_Posts_Controller',
             'taxonomies'=>array('subjects', 'teachers', 'grades', 'schools', 'keywords'),
-            'supports'             => array('title', 'editor', 'author', 'thumbnail', 'excerpt', 'custom-fields', 'revisions', 'page-attributes', 'due_date')
+            'supports'             => array('title', 'editor', 'author', 'thumbnail', 'excerpt', 'custom-fields', 'revisions', 'comments', 'page-attributes', 'due_date')
             );
         register_post_type( 'assignment', $args);
 
@@ -98,11 +98,19 @@ class Assignment_Post_Type_Factory {
             )
             );
         
-        register_rest_field( 'assignment', 'completed', array(
+        register_rest_field( 'assignment', 'complete', array(
                 'get_callback' => __NAMESPACE__.'\\get_completed_assignments',
                 'schema' => null,
                 )
-                );    
+                );   
+
+        register_rest_field( 'comment', 'author_avatar', array(
+            'get_callback' => __NAMESPACE__.'\\get_author_avatar',
+            'schema' => null,
+            )
+            );   
+            
+           
     }    
 
     public function create_taxonomies(){
@@ -382,13 +390,17 @@ function get_rest_featured_image( $object, $field_name, $request ){
 }
 
 function get_author_avatar( $object, $field_name, $request ){
-   $author_id = $object['post_author'];
-   $response = array(
-       'author_id' => $author_id,
-       'photoUrl' => get_user_meta($author_id, 'scholistit_photo', true)
-   );
+    if($object['type'] == 'comment'){
+        $author_id = $object['author'];
+    } else {
+        $author_id = $object['author'];
+    }
+   
+   $response = get_user_meta($author_id, 'scholistit_photo', true);
    return $response; 
 }
+
+
 
 function get_the_classroom(){
    $sections = new Sections();
