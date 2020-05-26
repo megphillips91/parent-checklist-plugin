@@ -85,7 +85,7 @@ add_action( 'rest_api_init', function () {
         'user_id'=>$user_id,
         'profile'=>$profile,
         'the_object'=>serialize($terms),
-        'type'=>$params['type']
+        'object_type'=>$params['type']
       )
       );
       
@@ -110,6 +110,8 @@ add_action( 'rest_api_init', function () {
       $query = "SELECT DISTINCT the_object, object_type FROM wp_following WHERE user_id=".$user_id;
     }
     $result = $wpdb->get_results($query);
+    $response = array();
+    $response['sections'] = array();
     foreach($result as $key=>$follow){
       $follow->the_object = unserialize($follow->the_object);
       $section = array(
@@ -120,8 +122,9 @@ add_action( 'rest_api_init', function () {
       );
       $follow->section = $section;
       unset($follow->the_object);
+      $response['sections'][] = $section;
     }
-    return $result;
+    return $response;
   }
 
   function rest_get_follows(\WP_REST_Request $request){
@@ -181,6 +184,7 @@ add_action( 'rest_api_init', function () {
   function register_user(\WP_REST_Request $request){
     $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
+      $params = $request->get_params();
       $username =$request->get_param('username');
       $email = $request->get_param('email');
       $token = $request->get_param('password');
@@ -194,34 +198,43 @@ add_action( 'rest_api_init', function () {
         'role'=>'author'
       );
       $user_id = wp_insert_user($user);
-      if(!is_int($user_id) && $user_id->errors){
-        $user = get_user_by('email', $email);
-        $user_id = $user->ID;
-        $newPass = wp_set_password($token, $user_id);
-        $creds = array(
-          'user_login'=>$user->get('user_login'),
-          'user_password'=>$newPass
-        );
-        wp_signon($creds, true);
-      }
       $success= (is_int($user_id)) ? true : false ;
-      //sign on user
-      $user = get_user_by('ID', $user_id);
-      $creds = array(
-        'user_login'=>$user->get('user_login'),
-        'user_password'=>$user->data->user_pass
-      );
-      wp_signon($creds, true);
+      
+      if(!$success){
+        if(!empty($user_id->errors['existing_user_email'])){
+          $user = get_user_by('email', $email);
+          $user_id = $user->ID;
+          update_user_meta($user_id, 'first_time_user', 'false');
+          $creds = array(
+            'user_login'=>$user->get('user_login'),
+            'user_password'=>$newPass
+          );
+        }
+      } else {
+        update_user_meta($user_id, 'first_time_user', 'true');
+        $user = get_user_by('ID', $user_id);
+      }
       //save photourl to usermeta
-      update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
+      update_user_meta($user_id, 'photo', $params['photo']);
+      update_user_meta($user_id, 'students', serialize($params['students']));
+      update_user_meta($user_id, 'userType', $params['userType']);
+
       //get completed assignments
       $completed = get_user_completed_assignments($user_id);
+      $first_time = get_user_meta($user_id, 'first_time_user', true);
+      $following = get_follows($user_id);
+      $students = unserialize(get_user_meta($user_id, 'students', true));
+      $photo = get_user_meta($user_id, 'photo', true);
       $response = array(
-        'user'=>$user,
+        'userID'=>$user_id,
+        'email'=>$user->data->user_email,
+        'photo'=>$photo,
+        'students'=>$students,
         'registration'=>$success,
-        'wp_user'=>get_user_by('id', $user_id),
-        'wp_user_id'=>$user_id,
-        'completed'=>$completed
+        'first_time_user'=> $first_time,
+        'user'=>$user->data,
+        'following'=>$following,
+        'completed'=>$completed,
       );
       return $response;
     } else {
