@@ -205,15 +205,17 @@ add_action( 'rest_api_init', function () {
           'user_password'=>$newPass
         );
         wp_signon($creds, true);
+      } else {
+        $success= (is_int($user_id)) ? true : false ;
+        //sign on user
+        $user = get_user_by('ID', $user_id);
       }
-      $success= (is_int($user_id)) ? true : false ;
-      //sign on user
-      $user = get_user_by('ID', $user_id);
-      $creds = array(
+      
+      /*$creds = array(
         'user_login'=>$user->get('user_login'),
         'user_password'=>$user->data->user_pass
       );
-      wp_signon($creds, true);
+      wp_signon($creds, true);*/
       //save photourl to usermeta
       update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
       //get completed assignments
