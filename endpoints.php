@@ -73,6 +73,11 @@ add_action( 'rest_api_init', function () {
     $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
     $params = $request->get_params();
+    $section = (array) json_decode($params['object']);
+    $profile = ($params['student'] == 'no') ? 'self' : $params['student'] ;
+    save_follow($params['user_id'], $profile, $section, 'section');
+    return get_follows($params['user_id']);
+    /*
     $following = get_follows($user_id);
     $terms = explode('_', $params['object']);
     $profile = ($params['student'] == 'no') ? 'self' : $params['student'] ;
@@ -96,13 +101,28 @@ add_action( 'rest_api_init', function () {
       'serialize' => serialize($terms)
     );
     return $response;
+    */
   } else {
     return $auth_response;
   }
   }
 
+  function save_follow($user_id, $profile, $terms, $type){
+    global $wpdb;
+    $insert = $wpdb->insert(
+      'wp_following',
+      array(
+        'user_id'=>$user_id,
+        'profile'=>$profile,
+        'the_object'=>serialize($terms),
+        'object_type'=>$type
+      )
+      );
+  }
+
   function get_follows($user_id, $profile = NULL){
     global $wpdb;
+    $user_id = (int) $user_id;
     if($profile != NULL){
       $query = "select * from wp_following where user_id=".$user_id;
       $query .= " and profile = '".$profile."'";
@@ -110,11 +130,11 @@ add_action( 'rest_api_init', function () {
       $query = "SELECT DISTINCT the_object, object_type FROM wp_following WHERE user_id=".$user_id;
     }
     $result = $wpdb->get_results($query);
+    
     $response = array();
-    $response['sections'] = array();
     foreach($result as $key=>$follow){
-      $follow->the_object = unserialize($follow->the_object);
-      $section = array(
+      $follow->section = unserialize($follow->the_object);
+     /* $section = array(
         'schools' => str_replace('-', ' ', $follow->the_object[0]),
         'teachers' => str_replace('-', ' ', $follow->the_object[1]),
         'grades' => str_replace('-', ' ', $follow->the_object[2]),
@@ -122,7 +142,8 @@ add_action( 'rest_api_init', function () {
       );
       $follow->section = $section;
       unset($follow->the_object);
-      $response['sections'][] = $section;
+      */
+      $response[] = $follow->section;
     }
     return $response;
   }
@@ -180,14 +201,20 @@ add_action( 'rest_api_init', function () {
       return $auth_response;
     }
   }
+
+
+
+
   function register_user(\WP_REST_Request $request){
     $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
+      $params = $request->get_params();
       $username =$request->get_param('username');
       $email = $request->get_param('email');
       $token = $request->get_param('password');
       $wpusername = explode('@', $email);
       $wpusername = $wpusername[0];
+      $display_name = str_replace('_', ' ', $username);
       $user = array(
         'user_pass' => $token,
         'user_login' =>$wpusername,
@@ -199,33 +226,44 @@ add_action( 'rest_api_init', function () {
       if(!is_int($user_id) && $user_id->errors){
         $user = get_user_by('email', $email);
         $user_id = $user->ID;
-        $newPass = wp_set_password($token, $user_id);
-        $creds = array(
-          'user_login'=>$user->get('user_login'),
-          'user_password'=>$newPass
-        );
-        wp_signon($creds, true);
+        update_user_meta($user_id, 'scholistit_firstTimer', 'false');        
       } else {
-        $success= (is_int($user_id)) ? true : false ;
-        //sign on user
+        update_user_meta($user_id, 'scholistit_firstTimer', 'true');
+        //add a follow to the schoolistit section
         $user = get_user_by('ID', $user_id);
       }
       
-      /*$creds = array(
-        'user_login'=>$user->get('user_login'),
-        'user_password'=>$user->data->user_pass
+      update_user_meta($user_id, 'scholistit_photo', $params['photo']);
+      $students = json_decode($params['students']);
+      update_user_meta($user_id, 'students', serialize($students));
+      $terms = array(
+        'schools'=>'SchooListIt',
+        'teachers'=>'Meg Phillips',
+        'grades'=>'All Grades',
+        'subjects'=>'Home Feed'
       );
-      wp_signon($creds, true);*/
-      //save photourl to usermeta
-      update_user_meta($user_id, 'scholistit_photo', $request->get_param('photoUrl'));
+      
+      save_follow($user_id, NULL, $terms, 'section');
       //get completed assignments
       $completed = get_user_completed_assignments($user_id);
+      $firstTimer = get_user_meta($user_id, 'scholistit_firstTimer', true);
+      $following = get_follows($user_id);
+      $students = unserialize(get_user_meta($user_id, 'students', true));
+      foreach($students as $student){
+        $student->following = get_follows($user_id, $student->name);
+      }
+      
       $response = array(
-        'user'=>$user,
+        'userID'=>$user_id,
+        'user'=>$user->data,
+        'name'=>$user->data->display_name,
+        'photo'=>$params['photo'],
+        'email'=>$user->data->user_email,
+        'first_time' => $firstTimer,
+        'students'=> $students,
+        'completed'=>$completed,
+        'following'=>$following,
         'registration'=>$success,
-        'wp_user'=>get_user_by('id', $user_id),
-        'wp_user_id'=>$user_id,
-        'completed'=>$completed
       );
       return $response;
     } else {

@@ -391,9 +391,9 @@ function get_rest_featured_image( $object, $field_name, $request ){
 
 function get_author_avatar( $object, $field_name, $request ){
     if($object['type'] == 'comment'){
-        $author_id = $object['author'];
+        $author_id = (int) $object['author'];
     } else {
-        $author_id = $object['author'];
+        $author_id = (int) $object['post_author'];
     }
    
    $response = get_user_meta($author_id, 'scholistit_photo', true);
