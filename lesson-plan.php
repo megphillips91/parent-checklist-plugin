@@ -161,7 +161,21 @@ class Lesson_Plans {
             );
             $args['meta_query'] = $meta_query;
         }
+        if(!empty($request['dates'])){
+            $meta_query = array(
+                'relation'=>'OR',
+            );
+            $dates = explode(',', $request['dates']);
+            foreach($dates as $theDate){
+                $meta_query[] = array(
+                    'key' => 'assigned_date',
+                    'value' => $theDate
+                );
+            }
+            $args['meta_query'] = $meta_query;
+        }
         unset($request['date']);
+        unset($request['dates']);
         $relation = (count($request) > 1)
             ? 'AND'
             : 'single';
