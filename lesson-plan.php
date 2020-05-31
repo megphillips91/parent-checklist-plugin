@@ -85,7 +85,7 @@ class Lesson_Plans {
     public $sections;
 
     public function __construct ($request){
-        $this->set_due_dates();
+       // $this->set_due_dates();
         $this->set_sections();
         $this->set_assignments($request->get_body_params());
     }
@@ -133,6 +133,9 @@ class Lesson_Plans {
         $this->class_args = $class_args;
     }
 
+
+
+
     /* 
     * @param string date 
     */
@@ -144,27 +147,36 @@ class Lesson_Plans {
         if(empty($posts_per_page)){
             $posts_per_page = '-1';
         }
+        $args = array(
+            'posts_per_page'=>'-1',
+            'post_type'=>'assignment',
+            'order'=>'DESC'
+        );
+        if(!empty($request['date'])){
+            $meta_query = array(
+                array(
+                    'key' => 'assigned_date',
+                    'value' => $request['date']
+                )
+            );
+            $args['meta_query'] = $meta_query;
+        }
+        unset($request['date']);
         $relation = (count($request) > 1)
             ? 'AND'
             : 'single';
-            $tax_query = array();
-            if((count($request) > 1)){$tax_query['relation'] = 'AND';}
-            foreach($request as $tax=>$value){
-                $tax_query[] = array(
-                    'taxonomy'=>$tax,
-                    'field'=>'name',
-                    'terms'=>$value
-                );
-            }
-            
-            $args = array(
-                'posts_per_page'=>'-1',
-                'post_type'=>'assignment',
-                'order'=>'DESC'
+        $tax_query = array();
+        if((count($request) > 1)){$tax_query['relation'] = 'AND';}
+        foreach($request as $tax=>$value){
+            $tax_query[] = array(
+                'taxonomy'=>$tax,
+                'field'=>'name',
+                'terms'=>$value
             );
-             if(!empty($request)){
-                 $args['tax_query'] = $tax_query;
-             }
+        }
+        if(!empty($request)){
+            $args['tax_query'] = $tax_query;
+        }
             $posts = new \WP_Query($args); 
 
             // now we are going to reorder this array of posts by the assigned date
@@ -189,6 +201,7 @@ class Lesson_Plans {
                     unset($returned_posts[$key]);
                 } else {
                     $post->author_avatar = get_user_meta($post->post_author, 'scholistit_photo', true);
+                    $user = get_user_by('id', $post->post_author);
                     //get users complete
                     global $wpdb;
                     $completed = $wpdb->get_results("SELECT user_id FROM wp_completed_assignments WHERE post_id=".$post->ID);
@@ -201,6 +214,7 @@ class Lesson_Plans {
                     $post->mandatory = get_post_meta($post->ID, 'mandatory', true);
                     $post->due_date = get_post_meta($post->ID, 'due_date', true);
                     $post->assigned_date = get_post_meta($post->ID, 'assigned_date', true);
+                    $post->author_name = $user->data->display_name;
                 }  
             }
 
@@ -209,7 +223,9 @@ class Lesson_Plans {
                 'total_posts'=>$posts->post_count,
                 'returned_posts'=>count($returned_posts),
                 'posts'=>$returned_posts,
-                'images'=>$images
+                'images'=>$images,
+                'args'=>$args,
+                'wp_query'=>$posts
             ); 
         $this->assignments = $assignments;
     }

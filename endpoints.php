@@ -76,32 +76,9 @@ add_action( 'rest_api_init', function () {
     $section = (array) json_decode($params['object']);
     $profile = ($params['student'] == 'no') ? 'self' : $params['student'] ;
     save_follow($params['user_id'], $profile, $section, 'section');
+    //then if first timer, change to not first timer and update profile.
+    update_user_meta($params['user_id'], 'scholistit_firstTimer', 'false');
     return get_follows($params['user_id']);
-    /*
-    $following = get_follows($user_id);
-    $terms = explode('_', $params['object']);
-    $profile = ($params['student'] == 'no') ? 'self' : $params['student'] ;
-    $user_id = (int) $params['user_id'];
-    
-    global $wpdb;
-    $insert = $wpdb->insert(
-      'wp_following',
-      array(
-        'user_id'=>$user_id,
-        'profile'=>$profile,
-        'the_object'=>serialize($terms),
-        'object_type'=>$params['type']
-      )
-      );
-      
-    $response = array(
-      'insert'=>$insert,
-      'following'=>get_follows($user_id),
-      'terms'=>$terms,
-      'serialize' => serialize($terms)
-    );
-    return $response;
-    */
   } else {
     return $auth_response;
   }
@@ -134,15 +111,6 @@ add_action( 'rest_api_init', function () {
     $response = array();
     foreach($result as $key=>$follow){
       $follow->section = unserialize($follow->the_object);
-     /* $section = array(
-        'schools' => str_replace('-', ' ', $follow->the_object[0]),
-        'teachers' => str_replace('-', ' ', $follow->the_object[1]),
-        'grades' => str_replace('-', ' ', $follow->the_object[2]),
-        'subjects' => str_replace('-', ' ', $follow->the_object[3]),
-      );
-      $follow->section = $section;
-      unset($follow->the_object);
-      */
       $response[] = $follow->section;
     }
     return $response;
