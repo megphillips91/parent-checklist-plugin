@@ -5,63 +5,58 @@
 namespace Parent_Checklist_REST;
 use \DateTime;
 
-$nonce = 'invalid';
-add_action('wp_loaded', function () {
-  global $nonce;
-  $nonce = wp_create_nonce('wp_rest');
-});
 
 add_action( 'rest_api_init', function () {
 
-    register_rest_route( 'parent-checklist-rest/v2', '/uploads', array(
+    register_rest_route( 'schoolistit-rest/v2', '/uploads', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\uploads_endpoint',
     ) );
 
-    register_rest_route( 'parent-checklist-rest/v2', '/assignments', array(
+    register_rest_route( 'schoolistit-rest/v2', '/assignments', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\post_assignments',
     ) );
 
-    register_rest_route( 'parent-checklist/v2', '/lesson-plans', array(
+    register_rest_route( 'schoolistit/v2', '/lesson-plans', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\rest_get_lesson_plans',
     ) );
     //classrooms
-    register_rest_route( 'parent-checklist/v2', '/classrooms', array(
+    register_rest_route( 'schoolistit/v2', '/classrooms', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\rest_get_classrooms',
     ) );
 
-    register_rest_route( 'parent-checklist/v2', '/follows', array(
+    register_rest_route( 'schoolistit/v2', '/follows', array(
       'methods' => 'GET',
       'callback' => __NAMESPACE__.'\\rest_get_follows',
     ) );
 
-    register_rest_route( 'parent-checklist-rest/v2', '/registration', array(
+    register_rest_route( 'schoolistit-rest/v2', '/registration', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\register_user',
     ) );
 
-    register_rest_route( 'parent-checklist-rest/v2', '/mark_complete', array(
+    register_rest_route( 'schoolistit-rest/v2', '/mark_complete', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\mark_complete',
     ) );
 
     //get_scholistit_user_data
-    register_rest_route( 'parent-checklist-rest/v2', '/user_data', array(
+    register_rest_route( 'schoolistit-rest/v2', '/user_data', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\get_scholistit_user_data',
     ) );
 
     //get_scholistit_user_data
-    register_rest_route( 'parent-checklist-rest/v2', '/comments/post', array(
+    register_rest_route( 'schoolistit-rest/v2', '/comments/post', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\save_comment',
     ) );
 
     //get_scholistit_user_data
-    register_rest_route( 'parent-checklist-rest/v2', '/follow', array(
+    register_rest_route( 'schoolistit-rest/v2', '/follow', array(
       'methods' => 'GET, POST',
       'callback' => __NAMESPACE__.'\\post_follow',
     ) );
@@ -286,7 +281,8 @@ add_action( 'rest_api_init', function () {
         'meta_input' => array(
             'due_date' => sanitize_text_field($params['due_date']),
             'mandatory' => sanitize_text_field($params['mandatory']),
-            'assigned_date' => sanitize_text_field($params['post_date'])
+            'assigned_date' => sanitize_text_field($params['post_date']),
+            'post_link'=>esc_url_raw($params['post_link'])
         )
       );
       $post_id = wp_insert_post($post_array);
@@ -336,9 +332,11 @@ add_action( 'rest_api_init', function () {
         'post_excerpt' => $params['post_excerpt'],
       );
       $result = wp_update_post($post_args);
-      update_post_meta($params['post_id'], 'due_date', $params['due_date']);
-      update_post_meta($params['post_id'], 'assigned_date', $params['assigned_date']);
-      update_post_meta($params['post_id'], 'mandatory', $params['mandatory']);
+      update_post_meta($params['post_id'], 'due_date', sanitize_text_field($params['due_date']));
+      update_post_meta($params['post_id'], 'assigned_date', sanitize_text_field($params['assigned_date']));
+      update_post_meta($params['post_id'], 'mandatory', sanitize_text_field($params['mandatory']));
+      update_post_meta($params['post_id'], 'post_link', esc_url_raw($params['post_link']));
+
       //wp-json/wp/v2/assignments?.$params['post_id]
       $request = new \WP_REST_Request( 'GET', '/wp/v2/assignments/'.$params['post_id']);
       $response = rest_do_request( $request );

@@ -228,6 +228,7 @@ class Lesson_Plans {
                     $post->mandatory = get_post_meta($post->ID, 'mandatory', true);
                     $post->due_date = get_post_meta($post->ID, 'due_date', true);
                     $post->assigned_date = get_post_meta($post->ID, 'assigned_date', true);
+                    $post->post_link = get_post_meta($post->ID, 'post_link', true);
                     $post->author_name = $user->data->display_name;
                 }  
             }

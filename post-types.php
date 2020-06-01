@@ -59,7 +59,19 @@ class Assignment_Post_Type_Factory {
             'rest_base'          => 'assignments',
             'rest_controller_class' => 'WP_REST_Posts_Controller',
             'taxonomies'=>array('subjects', 'teachers', 'grades', 'schools', 'keywords'),
-            'supports'             => array('title', 'editor', 'author', 'thumbnail', 'excerpt', 'custom-fields', 'revisions', 'comments', 'page-attributes', 'due_date')
+            'supports'             => array(
+                'title', 
+                'editor', 
+                'author', 
+                'thumbnail', 
+                'excerpt', 
+                'custom-fields', 
+                'revisions', 
+                'comments', 
+                'page-attributes', 
+                'due_date',
+                'assigned_date',
+                'post_link')
             );
         register_post_type( 'assignment', $args);
 
@@ -102,7 +114,12 @@ class Assignment_Post_Type_Factory {
                 'get_callback' => __NAMESPACE__.'\\get_completed_assignments',
                 'schema' => null,
                 )
-                );   
+                );
+        register_rest_field( 'assignment', 'post_link', array(
+                'get_callback' => __NAMESPACE__.'\\get_post_link',
+                'schema' => null,
+                )
+                );            
 
         register_rest_field( 'comment', 'author_avatar', array(
             'get_callback' => __NAMESPACE__.'\\get_author_avatar',
@@ -232,6 +249,13 @@ class Assignment_Post_Type_Factory {
         'side'
         );
 
+        add_meta_box( 'post_link',
+         __( 'Post Link', 'textdomain' ), 
+         __NAMESPACE__.'\\post_link_callback', 
+         'assignment',
+        'side'
+        );
+
     }
     public function save_custom_meta($post_id){
         if(isset($_POST['due_date']) && !empty($_POST['due_date'])){
@@ -241,6 +265,10 @@ class Assignment_Post_Type_Factory {
         if(isset($_POST['assigned_date']) && !empty($_POST['assigned_date'])){
             //TODO: check nonce
             update_post_meta($post_id, 'assigned_date', sanitize_text_field($_POST['assigned_date']));
+        }
+        if(isset($_POST['post_link']) && !empty($_POST['post_link'])){
+            //TODO: check nonce
+            update_post_meta($post_id, 'post_link', esc_url_raw($_POST['post_link']));
         }
         $this->get_class($post_id);
     }    
@@ -309,11 +337,23 @@ function assigned_date_callback(){
     echo $metabox;
 }
 
+function post_link_callback(){
+    $metabox = '<input type="url" id="post_link" name="post_link" value="'.get_post_meta(get_the_id(), 'post_link', true).'"/>';
+    echo $metabox;
+}
+
 function get_due_date( $object ) {
     //get the id of the post object array
     $post_id = $object['id'];
     //return the post meta
     return get_post_meta( $post_id, 'due_date', true );
+}
+
+function get_post_link( $object ) {
+    //get the id of the post object array
+    $post_id = $object['id'];
+    //return the post meta
+    return get_post_meta( $post_id, 'post_link', true );
 }
 
 function get_completed_assignments( $object ) {
