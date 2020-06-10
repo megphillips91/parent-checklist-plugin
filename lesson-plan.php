@@ -230,6 +230,7 @@ class Lesson_Plans {
                     $post->assigned_date = get_post_meta($post->ID, 'assigned_date', true);
                     $post->post_link = get_post_meta($post->ID, 'post_link', true);
                     $post->author_name = $user->data->display_name;
+                    $post->megadraft =  new Translate_Gutenberg_Blocks($post->post_content);
                 }  
             }
 
