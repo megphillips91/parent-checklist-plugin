@@ -61,8 +61,62 @@ add_action( 'rest_api_init', function () {
       'callback' => __NAMESPACE__.'\\post_follow',
     ) );
 
+    //get_scholistit_user_data
+    register_rest_route( 'schoolistit-rest/v2', '/post-content', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\post_content',
+    ) );
+
+    //get_scholistit_user_data
+    register_rest_route( 'schoolistit-rest/v2', '/post-image', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\post_image',
+    ) );
+
   } 
 ); //end add action
+
+function post_image(\WP_REST_Request $request){
+  $auth_response = authenticated($request);
+  if($auth_response['authenticated'] === true){
+  $params = $request->get_params();
+  $response = array(
+    'params' => $params
+  );
+  return $params;
+} else {
+  return $auth_response;
+}
+}
+
+
+function post_content(\WP_REST_Request $request){
+  $auth_response = authenticated($request);
+  if($auth_response['authenticated'] === true){
+  $params = $request->get_params();
+  $gutenBlocks = new Translate_Megadraft_Blocks($params);
+  $blocks = $gutenBlocks->blocks;
+  $string_content = '';
+  foreach($blocks as $block){
+    $string_content .= $block->guten_block;
+  }
+  $post_ID = (int) $params['post_id'];
+  $postarr = array(
+    'ID'=> $post_id,
+    'post_content'=>$string_content
+  );
+  $post_response = wp_update_post($postarr, true);
+  $response = array(
+    'success' => $post_response,
+    'string_content' =>$string_content,
+    'translation' => $gutenBlocks,
+    'params' => $params,
+  );
+  return $response;
+} else {
+  return $auth_response;
+}
+}
 
   function post_follow(\WP_REST_Request $request){
     $auth_response = authenticated($request);
