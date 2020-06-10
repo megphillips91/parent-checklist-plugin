@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: Parent Checklist
- * Plugin URI: http://msp-media.org/
+ * Plugin Name: SchooListIt Api
+ * Plugin URI: http://SchooListIt.com/
  * Description: Rest API for parent checklist
  * Author: megphillips91
  * Author URI: http://msp-media.org/
- * Version: 1.1.2
+ * Version: 1.1.3
  * License: GPL2+
  * http://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -36,6 +36,7 @@ namespace Parent_Checklist_REST;
   * Include plugin files
   */
  require_once plugin_dir_path( __FILE__ ) . 'lesson-plan.php';
+ require_once plugin_dir_path( __FILE__ ) . 'translate_blocks.php';
  require_once plugin_dir_path( __FILE__ ) . 'endpoints.php';
  require_once plugin_dir_path( __FILE__ ) . 'post-types.php';
 
