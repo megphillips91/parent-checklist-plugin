@@ -79,11 +79,33 @@ add_action( 'rest_api_init', function () {
 function post_image(\WP_REST_Request $request){
   $auth_response = authenticated($request);
   if($auth_response['authenticated'] === true){
-  $params = $request->get_params();
-  $response = array(
-    'params' => $params
-  );
-  return $params;
+    $params = $request->get_params();
+    if($_FILES['file']){
+      if (!function_exists('wp_handle_upload'))
+        { 
+          // These files need to be included as dependencies when on the front end.
+          require_once( ABSPATH . 'wp-admin/includes/image.php' );
+          require_once( ABSPATH . 'wp-admin/includes/file.php' );
+          require_once( ABSPATH . 'wp-admin/includes/media.php' );
+        }
+      foreach($_FILES as $key=>$file){
+        $media_id = media_handle_upload($key, $params['post_id'], array('test_form'=>false));
+        $post_id = wp_update_post(array(
+          'ID'=>$media_id,
+          'post_title'=>$params['alt']
+        ));
+        update_post_meta($media_id, '_wp_attachment_image_alt', $params['alt']);
+        $attachment_post = get_post($media_id);      
+      }
+
+    }
+    $response = array(
+      'happenening'=>"happeneing",
+      'params' => $params,
+      'image_src'=>$attachment_post->guid,
+      'media_post'=>$attachment_post
+    );
+  return $response;
 } else {
   return $auth_response;
 }
