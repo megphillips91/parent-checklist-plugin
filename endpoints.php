@@ -128,6 +128,7 @@ function post_content(\WP_REST_Request $request){
     'post_content'=>$string_content
   );
   $post_response = wp_update_post($postarr, true);
+  update_post_meta($post_ID, 'darft-js-content', $params['blocks']);
   $response = array(
     'success' => $post_response,
     'string_content' =>$string_content,

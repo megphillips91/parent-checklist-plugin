@@ -26,9 +26,11 @@ class Translate_Megadraft_Blocks {
     public function __construct ($JSON_blocks) {
         $this->raw = $JSON_blocks;
         $this->blocks = array();
+        /*
         foreach($JSON_blocks as $block){
            $this->blocks[] = new Gutenberg_Block(json_decode($block));
         }
+        */
         return $this;        
     }
     
@@ -46,6 +48,20 @@ class Gutenberg_Block {
                 $this->guten_type = 'paragraph';
                 $this->guten_block = $this->translate_paragraph($block_raw->text);
             break;
+            case 'headline 2' :
+                $this->guten_type = 'heading';
+                $this->guten_block = $this->translate_heading($block_raw);
+            break;
+            case 'headline 3' :
+                $this->guten_type = 'heading';
+                $this->guten_block = $this->translate_heading($block_raw);
+            break;
+            case 'headline 4' :
+                $this->guten_type = 'heading';
+                $this->guten_block = $this->translate_heading($block_raw);
+            break;
+            case 'atomic' :
+                $this->guten_block = $this->translate_embed($block_raw);
             default:
                 $this->guten_block = '';
                 $this->guten_type = 'not recognized';
@@ -54,6 +70,31 @@ class Gutenberg_Block {
 
     private function translate_paragraph($content){
         $block = '<!-- wp:paragraph --><p>'.$content.'</p><!-- /wp:paragraph -->';
+        return $block;
+    }
+    
+    private function translate_heading($block){
+        preg_match_all('!\d+!', $block->type, $matches);
+        $level = implode(' ', $matches[0]);
+        $block = '<!-- wp:heading --><h'.$level.'>'.$block->text.'</h'.$level.'><!-- /wp:heading -->';
+        return $block;
+    }
+
+    private function translate_atomic($block){
+        $mimes = wp_check_filetype($block->data->src);
+        if($mimes['type'] != 'image'){
+            $this->guten_type = 'embed'; //video
+            $block = '<!-- wp:embed {"url":"'.$block->data->src.'"} -->
+            <figure class="wp-block-embed"><div class="wp-block-embed__wrapper">
+            '.$block->data->src.'
+            </div></figure>
+            <!-- /wp:embed -->';
+        } else {
+            $this->guten_type == 'image'; //image
+            $block  = '<!-- wp:image {"id":0,"sizeSlug":"medium"} -->
+            <figure class="wp-block-image size-medium"><img src="'.$block->data->src.'" alt="" class="wp-image-0"/></figure>
+            <!-- /wp:image -->';
+        }
         return $block;
     }
 }
