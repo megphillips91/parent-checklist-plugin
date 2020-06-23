@@ -115,6 +115,17 @@ class Assignment_Post_Type_Factory {
                 'schema' => null,
                 )
                 );
+        register_rest_field( 'assignment', 'draft_js_content', array(
+                'get_callback' => __NAMESPACE__.'\\get_draft_js_content',
+                'schema' => null,
+                )
+                );
+        register_rest_field( 'assignment', 'linkExternal', array(
+                'get_callback' => __NAMESPACE__.'\\get_linkExternal',
+                'schema' => null,
+                )
+                );
+
         register_rest_field( 'assignment', 'post_link', array(
                 'get_callback' => __NAMESPACE__.'\\get_post_link',
                 'schema' => null,
@@ -125,9 +136,8 @@ class Assignment_Post_Type_Factory {
             'get_callback' => __NAMESPACE__.'\\get_author_avatar',
             'schema' => null,
             )
-            );   
-            
-           
+            );  
+               
     }    
 
     public function create_taxonomies(){
@@ -381,6 +391,8 @@ function get_the_class_array( $object ){
 }
 
 
+
+
 class Sections {
     public $sections;
     public $assignments;
@@ -439,6 +451,19 @@ function get_author_avatar( $object, $field_name, $request ){
    $response = get_user_meta($author_id, 'scholistit_photo', true);
    return $response; 
 }
+
+function get_draft_js_content( $object ){
+    $post_id = $object['id'];
+    $response = get_post_meta($post_id, 'draft_js_content', true);
+    return $response;
+}
+
+function get_linkExternal( $object ){
+    $post_id = $object['id'];
+    $response = get_post_meta($post_id, 'linkExternal', true);
+    return $response;
+}
+
 
 
 
