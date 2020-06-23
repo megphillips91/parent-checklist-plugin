@@ -23,77 +23,130 @@ class Translate_Megadraft_Blocks {
     public $guten_blocks;
 
     /* this takes in the raw result of megadraft function editorStateToJSON */
-    public function __construct ($JSON_blocks) {
-        $this->raw = $JSON_blocks;
+    public function __construct ($draft_blocks) {
+        $this->raw = $blocks;
         $this->blocks = array();
-        /*
-        foreach($JSON_blocks as $block){
-           $this->blocks[] = new Gutenberg_Block(json_decode($block));
+        foreach($draft_blocks as $block){
+           $this->blocks[] = new Gutenberg_Block($block);
         }
-        */
         return $this;        
     }
     
 }
 
 class Gutenberg_Block {
-    public $megadraft_type;
+    public $draft_type;
     public $guten_type;
     public $guten_block;
 
     public function __construct ($block_raw){
-        $this->megadraft_type = $block_raw->type;
-        switch ($this->megadraft_type) {
+        $this->draft_type = $block_raw->type;
+        switch ($block_raw->type) {
             case 'unstyled' :
                 $this->guten_type = 'paragraph';
-                $this->guten_block = $this->translate_paragraph($block_raw->text);
+                $this->guten_block = $this->translate_paragraph($block_raw);
             break;
-            case 'headline 2' :
+            case 'header-two' :
                 $this->guten_type = 'heading';
                 $this->guten_block = $this->translate_heading($block_raw);
             break;
-            case 'headline 3' :
+            case 'header-three' :
                 $this->guten_type = 'heading';
                 $this->guten_block = $this->translate_heading($block_raw);
             break;
-            case 'headline 4' :
+            case 'header-four' :
                 $this->guten_type = 'heading';
                 $this->guten_block = $this->translate_heading($block_raw);
             break;
-            case 'atomic' :
-                $this->guten_block = $this->translate_embed($block_raw);
+            case "atomic" :
+                $this->guten_block = $this->translate_atomic($block_raw);
+                break;
             default:
                 $this->guten_block = '';
                 $this->guten_type = 'not recognized';
         }
     }
 
-    private function translate_paragraph($content){
-        $block = '<!-- wp:paragraph --><p>'.$content.'</p><!-- /wp:paragraph -->';
+    private function translate_paragraph($block){
+        if(!empty($block->links)){
+            $block = $this->handle_inline_links($block);
+            return $block;
+        } else {
+            $block = '<!-- wp:paragraph -->
+                    <p>'.$block->text.'</p>
+                    <!-- /wp:paragraph -->
+                    
+                    ';
+            return $block;
+        } 
+    }
+    
+    private function handle_inline_links($content) {
+        
+        $offset_factor = 0;
+        
+        foreach($content->links->links as $index=>$link){
+            $replacement = '<a href="'.$link->href.'" >'.$link->anchorText.'</a>';
+            $new_offset = $link->offset + $offset_factor;
+            $newtext = \substr_replace($content->text, $replacement, $new_offset, $link->length);
+            $content->text = $newtext;
+            $additional_characters = strlen($replacement) - $link->length;
+            $offset_factor =  $offset_factor + $additional_characters;
+        }
+        $block = '
+        <!-- wp:paragraph -->
+        <p>'.$content->text.'</p>
+        <!-- /wp:paragraph -->
+                    
+                    ';
         return $block;
+    }
+
+    private function get_ranges(){
+
     }
     
     private function translate_heading($block){
-        preg_match_all('!\d+!', $block->type, $matches);
-        $level = implode(' ', $matches[0]);
-        $block = '<!-- wp:heading --><h'.$level.'>'.$block->text.'</h'.$level.'><!-- /wp:heading -->';
+        $levels = array(
+            'two'=>2,
+            'three'=>3,
+            'four'=>4
+        );
+        $type = explode('-', $block->type);
+        $level = $type[1];
+        $block = '<!-- wp:heading {"level":'.$levels[$level].'} -->
+        <h'.$levels[$level].'>'.$block->text.'</h'.$levels[$level].'>
+        <!-- /wp:heading -->
+        
+        ';
         return $block;
+    }
+
+    private function translate_list_item(){
+        $guten = "<!-- wp:list -->
+        <ul><li>main level list itme</li><li>list item<ul><li>sublist item</li></ul></li></ul>
+        <!-- /wp:list -->";
     }
 
     private function translate_atomic($block){
         $mimes = wp_check_filetype($block->data->src);
-        if($mimes['type'] != 'image'){
+        if(strpos($mimes['type'], 'image') == -1){
             $this->guten_type = 'embed'; //video
             $block = '<!-- wp:embed {"url":"'.$block->data->src.'"} -->
-            <figure class="wp-block-embed"><div class="wp-block-embed__wrapper">
+            <figure class="wp-block-embed">
+            <div class="wp-block-embed__wrapper">
             '.$block->data->src.'
             </div></figure>
-            <!-- /wp:embed -->';
+            <!-- /wp:embed -->
+            
+            ';
         } else {
             $this->guten_type == 'image'; //image
-            $block  = '<!-- wp:image {"id":0,"sizeSlug":"medium"} -->
-            <figure class="wp-block-image size-medium"><img src="'.$block->data->src.'" alt="" class="wp-image-0"/></figure>
-            <!-- /wp:image -->';
+            $block  = '
+            <!-- wp:image {"id":0,"sizeSlug":"medium"} -->
+            <figure class="wp-block-image size-medium"><img src="'.$block->data->src.'" alt="'.$block->data->alt.'" /></figure>
+            <!-- /wp:image -->  
+            ';
         }
         return $block;
     }

@@ -116,19 +116,21 @@ function post_content(\WP_REST_Request $request){
   $auth_response = authenticated($request);
   if($auth_response['authenticated'] === true){
   $params = $request->get_params();
-  $gutenBlocks = new Translate_Megadraft_Blocks($params);
+  $request_blocks = \json_decode($params['blocks']);
+  $gutenBlocks = new Translate_Megadraft_Blocks($request_blocks);
   $blocks = $gutenBlocks->blocks;
   $string_content = '';
   foreach($blocks as $block){
     $string_content .= $block->guten_block;
   }
-  $post_ID = (int) $params['post_id'];
+  $post_id = (int) $params['post_id'];
+  update_post_meta($post_id, 'draft_js_content', $params['rawContent']); //store the draft.js raw blocks into metadata for retrieval later.
+  update_post_meta($post_id, 'link_external', $params['linkEternal']); //store the draft.js raw blocks into metadata for retrieval later.
   $postarr = array(
     'ID'=> $post_id,
     'post_content'=>$string_content
   );
   $post_response = wp_update_post($postarr, true);
-  update_post_meta($post_ID, 'darft-js-content', $params['blocks']);
   $response = array(
     'success' => $post_response,
     'string_content' =>$string_content,
