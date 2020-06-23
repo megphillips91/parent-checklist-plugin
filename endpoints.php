@@ -73,6 +73,12 @@ add_action( 'rest_api_init', function () {
       'callback' => __NAMESPACE__.'\\post_image',
     ) );
 
+    //get_scholistit_user_data
+    register_rest_route( 'schoolistit/v2', '/translate-gutenberg', array(
+      'methods' => 'GET, POST',
+      'callback' => __NAMESPACE__.'\\translate_gutenberg',
+    ) );
+
   } 
 ); //end add action
 
@@ -112,6 +118,23 @@ function post_image(\WP_REST_Request $request){
 }
 
 
+function translate_gutenberg(\WP_REST_Request $request){
+  $auth_response = authenticated($request);
+  if($auth_response['authenticated'] === true){
+  $params = $request->get_params();
+  $megadraft = new Translate_Gutenberg_Blocks($params);
+  $blocks = $megadraft->blocks;
+  $response = array(
+    'translation' => $megadraft,
+    'params' => $params,
+  );
+  return $response;
+} else {
+  return $auth_response;
+}
+}
+
+
 function post_content(\WP_REST_Request $request){
   $auth_response = authenticated($request);
   if($auth_response['authenticated'] === true){
@@ -124,8 +147,10 @@ function post_content(\WP_REST_Request $request){
     $string_content .= $block->guten_block;
   }
   $post_id = (int) $params['post_id'];
+
   update_post_meta($post_id, 'draft_js_content', $params['rawContent']); //store the draft.js raw blocks into metadata for retrieval later.
   update_post_meta($post_id, 'link_external', $params['linkEternal']); //store the draft.js raw blocks into metadata for retrieval later.
+
   $postarr = array(
     'ID'=> $post_id,
     'post_content'=>$string_content

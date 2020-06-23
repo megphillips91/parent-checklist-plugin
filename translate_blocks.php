@@ -154,7 +154,102 @@ class Gutenberg_Block {
 
 
 class Translate_Gutenberg_Blocks {
+    public $blocks;
+
+    public function __construct ($post_content) {
+        //$this->guten_blocks = parse_blocks($post_content);
+        $megadraft_blocks = array();
+        
+         if ( has_blocks( $post_content ) ) {
+            $guten_blocks = parse_blocks($post_content);
+            foreach($guten_blocks as $block){
+                if($block['blockName'] != NULL){
+                    $megadraft = new Megadraft_block($block);
+                    $megadraft_blocks[] = $megadraft->megadraft_block;
+                }
+            }
+        } 
+        $this->blocks = $megadraft_blocks;     
+    }
     
+}
+
+class Megadraft_block {
+    public $megadraft_block;
+   
+    public function __construct ($guten_block){
+       // $this->blockvartype = ($guten_block['blockName'] == 'core/paragraph') ? true : false;
+       //$this->guten_block = $guten_block;
+        
+        switch ($guten_block['blockName']){
+            case 'core/paragraph':
+                $this->megadraft_block = $this->create_paragraph($guten_block);
+            break;
+            case 'core/heading':
+                $this->megadraft_block = $this->create_heading($guten_block);
+            break;
+            case 'core/image':
+                $this->megadraft_block = $this->create_image($guten_block);
+            break;
+            default:  
+                $this->megadraft_block = 'error: blocktype not recognized'; 
+        }
+    }
+
+    private function create_image($guten_block){
+        $display = "medium";
+        if($guten_block['attrs']['align'] === 'left'){
+            $display = 'small';
+        } 
+        //$image_src = $guten_block['innerHTML'];
+        $image_arr = explode("src=", $guten_block['innerHTML']);
+        $image_arr = explode('"', $image_arr[1]);
+        $image_src = $image_arr[1];
+        if(filter_var($image_src, FILTER_VALIDATE_URL) === false){
+            $image_src  = "error: the src was not extracted from the gutenberg block properly";
+        }
+
+        $data = array(
+            'src' => $image_src,
+            'type' => "image",
+            'display'=>$display,
+        );
+        return array(
+            'key'=> rand(),
+            'text'=> wp_strip_all_tags($guten_block['innerHTML'], true),
+            'type'=>'atomic',
+            "depth" => 0,
+            "inlineStyleRanges" => array(),
+            "entityRanges" => array(),
+            "data" => (object) $data
+        );
+    }
+
+    private function create_paragraph($guten_block){
+        
+        return array(
+            'key'=> rand(),
+            'text'=> wp_strip_all_tags($guten_block['innerHTML'], true),
+            'type'=>'unstyled',
+            "depth" => 0,
+            "inlineStyleRanges" => array(),
+            "entityRanges" => array(),
+            "data" => (object) array()
+        );
+    }
+
+    private function create_heading($guten_block){
+        
+        return array(
+            'key'=> rand(),
+            'text'=> wp_strip_all_tags($guten_block['innerHTML'], true),
+            'type'=>"header-two",
+            "depth" => 0,
+            "inlineStyleRanges" => array(),
+            "entityRanges" => array(),
+            "data" => (object) array()
+        );
+    }
 }
 
  ?>
