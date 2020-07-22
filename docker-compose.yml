@@ -1,17 +1,17 @@
 version: '3'
+
 services:
   schoolistit:
     container_name: "schoolistit"
     hostname: "schoolistit"
     build: "schoolistit"
     tty: true
+    ports:
+      - "8080:80/tcp"
     restart: unless-stopped
     networks:
       - schoolistit-net
-    volumes:
-      - ./files/:/var/www/html:ro
-volumes:
-  files:
 
 networks:
-  schoolistit-net
+  schoolistit-net:
+    driver: bridge

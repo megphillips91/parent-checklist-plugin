@@ -1,11 +1,14 @@
-FROM php:7.4.8-fpm
+FROM php:7.4-apache
 
 # Copy base files
-COPY files/endpoints.php /var/www/html/
-COPY files/lesson-plan.php /var/www/html/
-COPY files/plugin.php /var/www/html/
-COPY files/post-types.php /var/www/html/
-COPY files/translate_blocks.php /var/www/html/
+COPY ./files/ /var/www/html/
+# Set permisions
+RUN chown -R www-data:www-data /var/www
+RUN chmod -R 750 /var/www/
 
-# allow port 9000 ( php-fpm )
-EXPOSE 9000
+# Use the default production configuration
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+# Execute
+WORKDIR /var/www
+#CMD [ "php", "./plugin.php" ]
