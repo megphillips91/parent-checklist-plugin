@@ -9,7 +9,7 @@ namespace Parent_Checklist_REST;
 use \DateTime;
 
 /**
- * 
+ *
  */
 class Lesson_Factory {
     public $lessonPlan;
@@ -22,7 +22,7 @@ class Lesson_Factory {
         if($files){
             $fileName = $files["file"]["tmp_name"];
             if ($files["file"]["size"] > 0) {
-                
+
                 $file = fopen($fileName, "r");
                 $math = array();
                 $social_studies = array();
@@ -42,7 +42,7 @@ class Lesson_Factory {
                                 'description'=>'('.$column[3].') '.$column[4]
                             );
                         }
-                    }  
+                    }
                 } //end looping through the csv values
                 unset($math[0]);
                 unset($social_studies[0]);
@@ -74,7 +74,7 @@ class Lesson_Factory {
     private function insert_classroom(){
         global $wpdb;
     }
-    
+
 }// end lesson plan class
 
 
@@ -94,8 +94,8 @@ class Lesson_Plans {
         global $wpdb;
         $qry = "
         SELECT DISTINCT (STR_TO_DATE(meta_value, '%Y-%m-%d')) as 'due_date'
-        FROM wp_postmeta 
-        WHERE meta_key='due_date' 
+        FROM wp_postmeta
+        WHERE meta_key='due_date'
         ORDER BY due_date DESC";
         $metas = $wpdb->get_results($qry);
         $due_dates = array();
@@ -136,8 +136,8 @@ class Lesson_Plans {
 
 
 
-    /* 
-    * @param string date 
+    /*
+    * @param string date
     */
     public function set_assignments($request){
         $assignments = array();
@@ -191,24 +191,24 @@ class Lesson_Plans {
         if(!empty($request)){
             $args['tax_query'] = $tax_query;
         }
-            $posts = new \WP_Query($args); 
+            $posts = new \WP_Query($args);
 
             // now we are going to reorder this array of posts by the assigned date
             $returned_posts = $posts->posts;
             foreach($returned_posts as $post){
                 $post->assigned_date = new DateTime (get_post_meta($post->ID, 'assigned_date', true));
             }
-             
+
              usort($returned_posts, function($a, $b) {
-                
+
                 if ($a->assigned_date == $b->assigned_date) {
                   return 0;
                 }
-              
+
                 return $a->assigned_date < $b->assigned_date ? 1 : -1;
               });
 
-             
+
             //get author photo | query completed assignments
             foreach($returned_posts as $key=>$post){
                 if($posts_per_page !== '-1' && $key > (int)$posts_per_page - 1 ){
@@ -235,7 +235,7 @@ class Lesson_Plans {
                     $post->linkExternal = get_post_meta($post->ID, 'linkExternal', true);
 
 
-                }  
+                }
             }
 
             $images = $this->get_images($posts);
@@ -246,7 +246,7 @@ class Lesson_Plans {
                 'images'=>$images,
                 'args'=>$args,
                 'wp_query'=>$posts
-            ); 
+            );
         $this->assignments = $assignments;
     }
 
@@ -262,7 +262,7 @@ class Lesson_Plans {
         return $images;
     }
 
-    
+
 
 
 }//end lesson plan
@@ -281,7 +281,7 @@ class Classroom {
     public $school;
     public $grade;
     public $subject;
-    
+
 
     /**
      * @param string $key id
@@ -299,7 +299,7 @@ class Classroom {
             case 'class':
                 $this->instantiate_by_class($value);
             break;
-        }        
+        }
     }
 
     private function instantiate_by_id($id){
@@ -315,7 +315,7 @@ class Classroom {
             $this->subjects = str_replace(' ', '-', $class_array[2]);
             $this->grades = str_replace(' ', '-', $class_array[3]);
             $this->class_title = ucwords($classroom->class_title);
-        } 
+        }
     }
     /**
      * @param string "school teacher grade subject"
@@ -333,7 +333,7 @@ class Classroom {
             $this->subjects = str_replace(' ', '-', $class_array[2]);
             $this->grades = str_replace(' ', '-', $class_array[3]);
             $this->class_title = ucwords($classroom->class_title);
-        } 
+        }
     }
 }
 
@@ -357,10 +357,10 @@ class Schools {
  * assignment
  * this should probably be a custom post type and let the classroom id sit within the post meta
  * in theory, for future or pro accounts, the teachers could use the WP Admin to put very detailed instructions, links, etc
- * and the app could render a full post page for each assignment if neccesary. The excerpt could be the short description and be required. 
- * 
+ * and the app could render a full post page for each assignment if neccesary. The excerpt could be the short description and be required.
+ *
  * for now, we will keep it simple but future proof with a custom post type
- * 
+ *
  * so this class is not needed...we just need to do the work to declare the custom post type
  */
 
@@ -389,7 +389,7 @@ class Schools {
 
 /**
  * it was hard to resist going down this rabbit hole. But I think it should be handled on the front end.
- * we shall see whether that speeds us up or slows us down. 
+ * we shall see whether that speeds us up or slows us down.
  * Here is my thinkning - this is all there it exists
  * --- so if we prove concept on this thing and it works then we can scope this into future features
  */
