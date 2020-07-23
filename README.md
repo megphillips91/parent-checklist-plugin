@@ -16,6 +16,12 @@ cp .env_example .env
 docker-compose up -d --build --force-recreate --remove-orphans
 ```
 
+## Rebuild
+
+```bash
+docker-compose down -v --rmi all
+```
+
 ## Logs
 
 ```bash
