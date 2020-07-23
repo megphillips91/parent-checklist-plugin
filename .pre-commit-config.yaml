@@ -6,9 +6,9 @@ repos:
     rev: HEAD
     hooks:
       - id: trailing-whitespace
-  - repo: https://github.com/pryorda/dockerfilelint-precommit-hooks
-    rev: HEAD
-    hooks:
-      - id: dockerfilelint
-        stages: [commit]
+#  - repo: https://github.com/pryorda/dockerfilelint-precommit-hooks
+#    rev: HEAD
+#    hooks:
+#      - id: dockerfilelint
+#        stages: [commit]
 
