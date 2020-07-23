@@ -1,4 +1,4 @@
-FROM wordpress::8.0.21
+FROM wordpress:8.0.21
 
 # Copy base files
 COPY ./files/ /var/www/html/wp-content/plugins
