@@ -2,10 +2,10 @@
 /**
  * Assignment Custom Post Type
  * this is the creation and details of the custom post type for Group Assignments.
- * This class will serve all of the custom meta, front end forms, display, etc for custom Assignments. 
- * it will interface with the Youtube_Oauth class to 
+ * This class will serve all of the custom meta, front end forms, display, etc for custom Assignments.
+ * it will interface with the Youtube_Oauth class to
  * * upload a preview to youtube and
- * * set the description, seo, and link backs from youtube to the site. 
+ * * set the description, seo, and link backs from youtube to the site.
  */
 namespace Parent_Checklist_REST;
 
@@ -24,7 +24,7 @@ class Assignment_Post_Type_Factory {
             'grades'=>array('singular'=>'grade', 'plural'=>'grades'),
             'keywords'=>array('singular'=>'keyword', 'plural'=>'keywords'),
         );
-        
+
         add_action('init', array($this, 'create_post_types'));
         add_action('add_meta_boxes', array($this, 'add_custom_meta'));
         add_action('save_post', array($this, 'save_custom_meta'));
@@ -33,7 +33,7 @@ class Assignment_Post_Type_Factory {
         add_filter('manage_assignment_posts_custom_column', array($this, 'manage_custom_columns'));
         add_action( 'rest_api_init', array($this, 'api_custom_fields'));
     }
-    
+
 
     public function create_post_types(){
         $args = array(
@@ -48,7 +48,7 @@ class Assignment_Post_Type_Factory {
                 'not_found'          => __('No Assignment Found', 'ParentChecklist'),
                 'not_found_in_trash' => __('No studies found in Trash', 'ParentChecklist')
             ),
-            
+
             'description'          => 'Assignments',
             'hierarchical'         => false,
             'menu_icon'            => 'dashicons-book',
@@ -60,15 +60,15 @@ class Assignment_Post_Type_Factory {
             'rest_controller_class' => 'WP_REST_Posts_Controller',
             'taxonomies'=>array('subjects', 'teachers', 'grades', 'schools', 'keywords'),
             'supports'             => array(
-                'title', 
-                'editor', 
-                'author', 
-                'thumbnail', 
-                'excerpt', 
-                'custom-fields', 
-                'revisions', 
-                'comments', 
-                'page-attributes', 
+                'title',
+                'editor',
+                'author',
+                'thumbnail',
+                'excerpt',
+                'custom-fields',
+                'revisions',
+                'comments',
+                'page-attributes',
                 'due_date',
                 'assigned_date',
                 'post_link')
@@ -83,7 +83,7 @@ class Assignment_Post_Type_Factory {
         'schema' => null,
         )
         );
-        
+
         register_rest_field( 'assignment', 'imageUrl', array(
               'get_callback'    => __NAMESPACE__.'\\get_rest_featured_image',
               'update_callback' => null,
@@ -109,7 +109,7 @@ class Assignment_Post_Type_Factory {
             'schema' => null,
             )
             );
-        
+
         register_rest_field( 'assignment', 'complete', array(
                 'get_callback' => __NAMESPACE__.'\\get_completed_assignments',
                 'schema' => null,
@@ -130,18 +130,18 @@ class Assignment_Post_Type_Factory {
                 'get_callback' => __NAMESPACE__.'\\get_post_link',
                 'schema' => null,
                 )
-                );            
+                );
 
         register_rest_field( 'comment', 'author_avatar', array(
             'get_callback' => __NAMESPACE__.'\\get_author_avatar',
             'schema' => null,
             )
-            );  
-               
-    }    
+            );
+
+    }
 
     public function create_taxonomies(){
-        
+
         foreach($this->classroom_args as $key=>$arg){
             // Add Assignment keywords
             $labels = array(
@@ -152,7 +152,7 @@ class Assignment_Post_Type_Factory {
                 'all_items' => __( 'All '.ucwords($arg['plural']) ),
                 'parent_item' => null,
                 'parent_item_colon' => null,
-                'edit_item' => __( 'Edit '.ucwords($arg['singular']) ), 
+                'edit_item' => __( 'Edit '.ucwords($arg['singular']) ),
                 'update_item' => __( 'Update '.ucwords($arg['singular']) ),
                 'add_new_item' => __( 'Add New '.ucwords($arg['singular']) ),
                 'new_item_name' => __( 'New '.ucwords($arg['singular']) ),
@@ -160,7 +160,7 @@ class Assignment_Post_Type_Factory {
                 'add_or_remove_items' => __( 'Add or remove '.ucwords($arg['plural']) ),
                 'choose_from_most_used' => __( 'Choose from the most used '.ucwords($arg['plural']) ),
                 'menu_name' => __( ucwords($arg['plural']) ),
-            ); 
+            );
 
             register_taxonomy($arg['plural'],'assignment',array(
                 'hierarchical' => false,
@@ -171,9 +171,9 @@ class Assignment_Post_Type_Factory {
                 'show_in_rest'=>true
             ));
         }
-        
+
     }// end create taxonomies
-    
+
     public function add_menu_columns($columns){
         $new_columns['cb'] = '<input type="checkbox" />';
         $new_columns['title'] = _x('Assignment', 'column name');
@@ -226,11 +226,11 @@ class Assignment_Post_Type_Factory {
                 $content .= ', ';
             }
         }
-        echo $content;       
+        echo $content;
     }
 
     public function register_custom_metas(){
-        $args = array( 
+        $args = array(
           'object_subtype'=>  'assignment',
           'type'=> 'string',
           'description'=>'Due Date',
@@ -246,22 +246,22 @@ class Assignment_Post_Type_Factory {
 
     public function add_custom_meta(){
         add_meta_box( 'due_date',
-         __( 'Due Date', 'textdomain' ), 
-         __NAMESPACE__.'\\due_date_callback', 
+         __( 'Due Date', 'textdomain' ),
+         __NAMESPACE__.'\\due_date_callback',
          'assignment',
         'side'
         );
 
         add_meta_box( 'assigned_date',
-         __( 'Assigned Date', 'textdomain' ), 
-         __NAMESPACE__.'\\assigned_date_callback', 
+         __( 'Assigned Date', 'textdomain' ),
+         __NAMESPACE__.'\\assigned_date_callback',
          'assignment',
         'side'
         );
 
         add_meta_box( 'post_link',
-         __( 'Post Link', 'textdomain' ), 
-         __NAMESPACE__.'\\post_link_callback', 
+         __( 'Post Link', 'textdomain' ),
+         __NAMESPACE__.'\\post_link_callback',
          'assignment',
         'side'
         );
@@ -281,7 +281,7 @@ class Assignment_Post_Type_Factory {
             update_post_meta($post_id, 'post_link', esc_url_raw($_POST['post_link']));
         }
         $this->get_class($post_id);
-    }    
+    }
     /**
      * loops through the taxonomies and gets the terms for each taxonnomy
      */
@@ -408,12 +408,12 @@ class Sections {
             'posts_per_page'=>'-1',
             'post_type'=>'assignment',
             'order'=>'DESC',
-            
+
         );
             $args['fields'] = 'ids';
             $assignments = new \WP_Query($args);
             $this->assignments = $assignments->posts;
-        
+
     }
 
     private function get_post_sections(){
@@ -423,7 +423,7 @@ class Sections {
             foreach($assignment_sections->sections as $section){
                 $this->sections[] = $section;
             }
-        } 
+        }
     }
 
     private function remove_dups(){
@@ -447,9 +447,9 @@ function get_author_avatar( $object, $field_name, $request ){
     } else {
         $author_id = (int) $object['post_author'];
     }
-   
+
    $response = get_user_meta($author_id, 'scholistit_photo', true);
-   return $response; 
+   return $response;
 }
 
 function get_draft_js_content( $object ){
@@ -476,7 +476,7 @@ class Assignment_Sections {
     public $sections;
     public $section_taxonomies;
     public $assignment_terms;
-    
+
 
     public function __construct($post_id){
         $this->section_taxonomies = array('schools', 'teachers', 'subjects', 'grades');
@@ -526,12 +526,12 @@ class Assignment_Sections {
                     //loop through that new section changing only the needed taxonomies to the new position term
                     $this->sections[$i][$multitax] = $this->assignment_terms[$multitax][$i];
                 }
-            } 
+            }
         }
     }
 
 } //end class assignment_sections
 
-  
+
 
 ?>

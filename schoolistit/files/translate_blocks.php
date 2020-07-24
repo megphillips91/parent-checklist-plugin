@@ -1,10 +1,10 @@
 <?php
 /**
- * Lesson Content 
- * this file should hold classes responsible for taking blocks from megadraft and converting them into gutenberg blocks. 
+ * Lesson Content
+ * this file should hold classes responsible for taking blocks from megadraft and converting them into gutenberg blocks.
  * the idea here is that in theory, I can roll this into a plugin for the repo and therein
- * gain credibility as a developer working on modern front end 
- * 
+ * gain credibility as a developer working on modern front end
+ *
  * other than personal self interest, what this will do that is pretty cool, is to "translate" gutenberg into draft.js
  * with the end net effect being that the lesson content will be available on both side - within the WP editoe
  * and within the app. which could prove needed and useful.
@@ -13,7 +13,7 @@ namespace Parent_Checklist_REST;
 use \DateTime;
 
 /**
- * Translates megadraft blocks into gutenberg blocks 
+ * Translates megadraft blocks into gutenberg blocks
  * take in megadraft blocks translate into gutenberg blocks which can be saved into the DB and then used in the WP Admin
  * @param string $JSON_blocks -  raw result of megadraft function editorStateToJSON; send it over red rover ;)
  * @return string the formatted and wrapped gutenberg block to be stored into the db
@@ -29,9 +29,9 @@ class Translate_Megadraft_Blocks {
         foreach($draft_blocks as $block){
            $this->blocks[] = new Gutenberg_Block($block);
         }
-        return $this;        
+        return $this;
     }
-    
+
 }
 
 class Gutenberg_Block {
@@ -75,16 +75,16 @@ class Gutenberg_Block {
             $block = '<!-- wp:paragraph -->
                     <p>'.$block->text.'</p>
                     <!-- /wp:paragraph -->
-                    
+
                     ';
             return $block;
-        } 
+        }
     }
-    
+
     private function handle_inline_links($content) {
-        
+
         $offset_factor = 0;
-        
+
         foreach($content->links->links as $index=>$link){
             $replacement = '<a href="'.$link->href.'" >'.$link->anchorText.'</a>';
             $new_offset = $link->offset + $offset_factor;
@@ -97,7 +97,7 @@ class Gutenberg_Block {
         <!-- wp:paragraph -->
         <p>'.$content->text.'</p>
         <!-- /wp:paragraph -->
-                    
+
                     ';
         return $block;
     }
@@ -105,7 +105,7 @@ class Gutenberg_Block {
     private function get_ranges(){
 
     }
-    
+
     private function translate_heading($block){
         $levels = array(
             'two'=>2,
@@ -117,7 +117,7 @@ class Gutenberg_Block {
         $block = '<!-- wp:heading {"level":'.$levels[$level].'} -->
         <h'.$levels[$level].'>'.$block->text.'</h'.$levels[$level].'>
         <!-- /wp:heading -->
-        
+
         ';
         return $block;
     }
@@ -138,14 +138,14 @@ class Gutenberg_Block {
             '.$block->data->src.'
             </div></figure>
             <!-- /wp:embed -->
-            
+
             ';
         } else {
             $this->guten_type == 'image'; //image
             $block  = '
             <!-- wp:image {"id":0,"sizeSlug":"medium"} -->
             <figure class="wp-block-image size-medium"><img src="'.$block->data->src.'" alt="'.$block->data->alt.'" /></figure>
-            <!-- /wp:image -->  
+            <!-- /wp:image -->
             ';
         }
         return $block;
@@ -159,7 +159,7 @@ class Translate_Gutenberg_Blocks {
     public function __construct ($post_content) {
         //$this->guten_blocks = parse_blocks($post_content);
         $megadraft_blocks = array();
-        
+
          if ( has_blocks( $post_content ) ) {
             $guten_blocks = parse_blocks($post_content);
             foreach($guten_blocks as $block){
@@ -168,19 +168,19 @@ class Translate_Gutenberg_Blocks {
                     $megadraft_blocks[] = $megadraft->megadraft_block;
                 }
             }
-        } 
-        $this->blocks = $megadraft_blocks;     
+        }
+        $this->blocks = $megadraft_blocks;
     }
-    
+
 }
 
 class Megadraft_block {
     public $megadraft_block;
-   
+
     public function __construct ($guten_block){
        // $this->blockvartype = ($guten_block['blockName'] == 'core/paragraph') ? true : false;
        //$this->guten_block = $guten_block;
-        
+
         switch ($guten_block['blockName']){
             case 'core/paragraph':
                 $this->megadraft_block = $this->create_paragraph($guten_block);
@@ -191,8 +191,8 @@ class Megadraft_block {
             case 'core/image':
                 $this->megadraft_block = $this->create_image($guten_block);
             break;
-            default:  
-                $this->megadraft_block = 'error: blocktype not recognized'; 
+            default:
+                $this->megadraft_block = 'error: blocktype not recognized';
         }
     }
 
@@ -200,7 +200,7 @@ class Megadraft_block {
         $display = "medium";
         if($guten_block['attrs']['align'] === 'left'){
             $display = 'small';
-        } 
+        }
         //$image_src = $guten_block['innerHTML'];
         $image_arr = explode("src=", $guten_block['innerHTML']);
         $image_arr = explode('"', $image_arr[1]);
@@ -226,7 +226,7 @@ class Megadraft_block {
     }
 
     private function create_paragraph($guten_block){
-        
+
         return array(
             'key'=> rand(),
             'text'=> wp_strip_all_tags($guten_block['innerHTML'], true),
@@ -239,7 +239,7 @@ class Megadraft_block {
     }
 
     private function create_heading($guten_block){
-        
+
         return array(
             'key'=> rand(),
             'text'=> wp_strip_all_tags($guten_block['innerHTML'], true),

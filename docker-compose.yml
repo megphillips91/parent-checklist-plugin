@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  # WordPress instance
+  schoolistit-wp:
+    container_name: "schoolistit-wp"
+    hostname: "web"
+    build: "schoolistit"
+    tty: true
+    ports:
+      - "8080:80/tcp"
+    restart: unless-stopped
+    networks:
+      - schoolistit-net
+    depends_on:
+      - schoolistit-db
+    links:
+      - schoolistit-db:db
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+
+  # Database engine
+  schoolistit-db:
+    container_name: "schoolistit-sql"
+    hostname: "db"
+    image: mysql:latest
+    tty: true
+    restart: unless-stopped
+    networks:
+      - schoolistit-net
+    volumes:
+      - schoolistit-db:/var/lib/mysql
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_ONETIME_PASSWORD: 1
+      MYSQL_USER: ${WORDPRESS_DB_USER}
+      MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      MYSQL_DATABASE: ${WORDPRESS_DB_NAME}
+
+networks:
+  schoolistit-net:
+    driver: bridge
+
+volumes:
+  schoolistit-db:

@@ -44,5 +44,5 @@ namespace Parent_Checklist_REST;
  //create post type
  $post_type = new Assignment_Post_Type_Factory();
 
- 
+
 ?>

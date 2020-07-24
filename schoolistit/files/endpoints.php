@@ -79,7 +79,7 @@ add_action( 'rest_api_init', function () {
       'callback' => __NAMESPACE__.'\\translate_gutenberg',
     ) );
 
-  } 
+  }
 ); //end add action
 
 function post_image(\WP_REST_Request $request){
@@ -88,7 +88,7 @@ function post_image(\WP_REST_Request $request){
     $params = $request->get_params();
     if($_FILES['file']){
       if (!function_exists('wp_handle_upload'))
-        { 
+        {
           // These files need to be included as dependencies when on the front end.
           require_once( ABSPATH . 'wp-admin/includes/image.php' );
           require_once( ABSPATH . 'wp-admin/includes/file.php' );
@@ -101,7 +101,7 @@ function post_image(\WP_REST_Request $request){
           'post_title'=>$params['alt']
         ));
         update_post_meta($media_id, '_wp_attachment_image_alt', $params['alt']);
-        $attachment_post = get_post($media_id);      
+        $attachment_post = get_post($media_id);
       }
 
     }
@@ -206,7 +206,7 @@ function post_content(\WP_REST_Request $request){
       $query = "SELECT DISTINCT the_object, object_type FROM wp_following WHERE user_id=".$user_id;
     }
     $result = $wpdb->get_results($query);
-    
+
     $response = array();
     foreach($result as $key=>$follow){
       $follow->section = unserialize($follow->the_object);
@@ -225,12 +225,12 @@ function post_content(\WP_REST_Request $request){
         return 'there was an error. userID is required parameter';
       }
   }
-  
+
   function uploads_endpoint(\WP_REST_Request $request){
     $lesson = new Lesson_Factory($request);
     return $lesson->lessonPlan;
   }
-  
+
   function rest_get_lesson_plans(\WP_REST_Request $request){
     $lesson_plans = new Lesson_Plans($request);
     return $lesson_plans;
@@ -247,7 +247,7 @@ function post_content(\WP_REST_Request $request){
     return $classes;
   }
 
-  
+
   function save_comment(\WP_REST_Request $request){
     $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
@@ -293,13 +293,13 @@ function post_content(\WP_REST_Request $request){
       if(!is_int($user_id) && $user_id->errors){
         $user = get_user_by('email', $email);
         $user_id = $user->ID;
-        update_user_meta($user_id, 'scholistit_firstTimer', 'false');        
+        update_user_meta($user_id, 'scholistit_firstTimer', 'false');
       } else {
         update_user_meta($user_id, 'scholistit_firstTimer', 'true');
         //add a follow to the schoolistit section
         $user = get_user_by('ID', $user_id);
       }
-      
+
       update_user_meta($user_id, 'scholistit_photo', $params['photo']);
       $students = json_decode($params['students']);
       update_user_meta($user_id, 'students', serialize($students));
@@ -309,7 +309,7 @@ function post_content(\WP_REST_Request $request){
         'grades'=>'All Grades',
         'subjects'=>'Home Feed'
       );
-      
+
       save_follow($user_id, NULL, $terms, 'section');
       //get completed assignments
       $completed = get_user_completed_assignments($user_id);
@@ -319,7 +319,7 @@ function post_content(\WP_REST_Request $request){
       foreach($students as $student){
         $student->following = get_follows($user_id, $student->name);
       }
-      
+
       $response = array(
         'userID'=>$user_id,
         'user'=>$user->data,
@@ -412,14 +412,14 @@ function post_content(\WP_REST_Request $request){
       );
       return $response;
       } //else create post
-      
+
     } else {
       return $auth_response;
     }
   }
 
   function edit_assignment($params){
-    $changed_fields = (!empty($params['changed_fields'])) ? explode(',', $params['changed_fields']): null ;    
+    $changed_fields = (!empty($params['changed_fields'])) ? explode(',', $params['changed_fields']): null ;
     if(in_array('delete_post', $changed_fields)){
       //MEGDO we need to deal with SEO here. Eventually when we have an SEO strategy to show lessons publically
       $delete = wp_trash_post($params['post_id']);
@@ -451,13 +451,13 @@ function post_content(\WP_REST_Request $request){
         'post'=>$post,
         'edit'=>true,
         'params'=>$params
-  
+
       );
       return $response;
     } return "there was an error. please try again";
-    
+
   }
-  
+
   function mark_complete(\WP_REST_Request $request){
     $auth_response = authenticated($request);
     if($auth_response['authenticated'] === true){
@@ -484,7 +484,7 @@ function post_content(\WP_REST_Request $request){
               return $response;
             }
           }
-          //delete 
+          //delete
         if($params['action'] == 'delete'){
           $delete = $wpdb->delete(
             'wp_completed_assignments',
@@ -521,18 +521,18 @@ function post_content(\WP_REST_Request $request){
   }
 
   /**
-   * homeade security for now it will suffice. 
-   * two calls - 
+   * homeade security for now it will suffice.
+   * two calls -
    * 1. get a nonce for scholistic_registration
-   * 2. return with 
+   * 2. return with
    * --- username
    * --- email
    * --- password (token from google/fb)
    * --- nonce
    * --- salt
-   * 3. this script will check the nonce against wp_check_nonce. if pass, 
-   * 4. Then check the secret_key_salt encryption. 
-   * 
+   * 3. this script will check the nonce against wp_check_nonce. if pass,
+   * 4. Then check the secret_key_salt encryption.
+   *
    */
   function authenticated($request) {
     $headers = $request->get_headers();
@@ -562,7 +562,7 @@ function post_content(\WP_REST_Request $request){
         $response['salt'] = wp_create_nonce("scholistit_registration");
         return $response;
       }
-    } 
+    }
   }
 
 ?>
